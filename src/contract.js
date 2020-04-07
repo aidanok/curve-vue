@@ -41,6 +41,10 @@ const currencies = {
 		usdt: 'yUSDT',
 		busd: 'ybUSD'
 	},
+	susd: {
+		susd: 'sUSD',
+		ycurve: 'yCurve',
+	}
 }
 
 export const allCurrencies = currencies
@@ -49,7 +53,8 @@ export const poolMenu = {
 	compound: 'Compound',
 	usdt: 'USDT',
 	iearn: 'Y',
-	busd: 'bUSD'
+	busd: 'bUSD',
+	susd: 'sUSD-yCurve'
 }
 
 export const gas = {
@@ -258,7 +263,7 @@ export async function init(contract, refresh = false) {
     chunkArr(decoded, 2).map((v, i) => {
     	var addr = v[0];
         let coin_abi = allabis[contract.currentContract].cERC20_abi
-        if(['iearn', 'busd'].includes(contract.currentContract)) coin_abi = allabis[contract.currentContract].yERC20_abi
+        if(['iearn', 'busd', 'susd'].includes(contract.currentContract)) coin_abi = allabis[contract.currentContract].yERC20_abi
         contract.coins.push(new web3.eth.Contract(coin_abi, addr));
         var underlying_addr = v[1];
         contract.underlying_coins.push(new web3.eth.Contract(allabis[contract.currentContract].ERC20_abi, underlying_addr));
