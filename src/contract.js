@@ -63,6 +63,7 @@ export const gas = {
 		usdt: 1200000,
 		iearn: 1600000,
 		busd: 1600000,
+		susd: 1600000,
 	},
 	depositzap: {
 		compound: {
