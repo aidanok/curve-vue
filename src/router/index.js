@@ -128,16 +128,17 @@ router.beforeEach(async (to, from, next) => {
   else subdomain = to.path.split('/')[1]*/
   if(subdomain == 'y') subdomain = 'iearn'
   if(!['compound', 'usdt', 'iearn', 'busd' , 'y'].includes(subdomain)) subdomain = 'compound'
+    console.log(subdomain, "SUBDOMAIN")
 
-  if((currentContract.currentContract != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
-    changeContract(subdomain)
+  if((currentContract.currentName != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
+    init(subdomain)
     currentContract.currentContract = subdomain
     next();
   }
   else if(!['Stats', 'FAQ', 'Donate'].includes(to.name)) {
     next();
-    if(!currentContract.initializedContracts) {
-      await init();
+    if(!currentContract.contracts[subdomain].initializedContracts) {
+      await init(subdomain);
     }
   }
   else {

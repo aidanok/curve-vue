@@ -66,7 +66,7 @@
 <script>
 	import Vue from 'vue'
     import * as common from '../utils/common.js'
-    import { getters, contract as currentContract, gas as contractGas } from '../contract'
+    import { getters, contract as state, gas as contractGas } from '../contract'
     import allabis from '../allabis'
     const compound = allabis.compound
     import * as helpers from '../utils/helpers'
@@ -93,28 +93,31 @@
     		depositc: true,
     		coins: [],
     		rates: [],
-    		swap_address: currentContract.swap_address,
+    		swap_address: allabis[state.currentName].swap_address,
     		slippagePromise: helpers.makeCancelable(Promise.resolve()),
     	}),
         created() {
-            this.$watch(()=>currentContract.default_account, (val, oldval) => {
+            this.$watch(()=>state.default_account, (val, oldval) => {
             	if(!val || !oldval) return;
             	if(val.toLowerCase() == oldval.toLowerCase()) return;
                 this.mounted();
             })
-            this.$watch(()=>currentContract.initializedContracts, val => {
+            this.$watch(()=>state.currentContract.initializedContracts, val => {
                 if(val) this.mounted();
             })
-            this.$watch(()=>currentContract.currentContract, (val, oldval) => {
+            this.$watch(()=>state.currentName, val => {
+            	this.mounted()
+            })
+            this.$watch(()=>state.currentContract, (val, oldval) => {
             	this.setInputStyles(false, val, oldval)
-            	if(currentContract.initializedContracts) this.mounted();
+            	if(state.currentContract.initializedContracts) this.mounted();
             })
         },
         watch: {
         	async depositc(val, oldval) {
         		this.changeSwapInfo(val)
         		await this.handle_sync_balances()
-        		await Promise.all([...Array(currentContract.N_COINS).keys()].map(i=>this.change_currency(i, false)))
+        		await Promise.all([...Array(this.contractAbis.N_COINS).keys()].map(i=>this.change_currency(i, false)))
         		await this.calcSlippage()
         	}
         },
@@ -123,40 +126,40 @@
         },
         mounted() {
 	        this.setInputStyles(true)
-            if(currentContract.initializedContracts) this.mounted();
+            if(state.currentContract.initializedContracts) this.mounted();
         },
         methods: {
             async mounted(oldContract) {
             	this.changeSwapInfo(this.depositc)
-            	currentContract.showSlippage = false;
-        		currentContract.slippage = 0;
+            	state.showSlippage = false;
+        		state.slippage = 0;
                 common.update_fee_info();
                 await this.handle_sync_balances();
                 await this.calcSlippage()
-                let calls = [...Array(currentContract.N_COINS).keys()].map(i=>[this.coins[i]._address, 
-                	this.coins[i].methods.allowance(currentContract.default_account, this.swap_address).encodeABI()])
-                let aggcalls = await currentContract.multicall.methods.aggregate(calls).call()
+                let calls = [...Array(this.contractAbis.N_COINS).keys()].map(i=>[this.coins[i]._address, 
+                	this.coins[i].methods.allowance(state.default_account, this.swap_address).encodeABI()])
+                let aggcalls = await state.multicall.methods.aggregate(calls).call()
                 let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
-                if(decoded.some(v=>BN(v).lte(currentContract.max_allowance.div(BN(2))) > 0))
+                if(decoded.some(v=>BN(v).lte(state.max_allowance.div(BN(2))) > 0))
                 	this.inf_approval = false
                 this.disabledButtons = false;
             },
             changeSwapInfo(val) {
             	if(val) {
-	            	this.coins = currentContract.coins
-	            	this.rates = currentContract.c_rates
-	            	this.swap_address = currentContract.swap_address
+	            	this.coins = state.currentContract.coins
+	            	this.rates = state.currentContract.c_rates
+	            	this.swap_address = this.contractAbis.swap_address
         		}
             	else {
-            		this.coins = currentContract.underlying_coins
-            		this.rates = currentContract.coin_precisions.map(cp=>1/cp)
-            		this.swap_address = currentContract.deposit_address
+            		this.coins = state.currentContract.underlying_coins
+            		this.rates = this.contractAbis.coin_precisions.map(cp=>1/cp)
+            		this.swap_address = this.contractAbis.deposit_address
             	}
             },
             setInputStyles(newInputs = false, newContract, oldContract) {
 				if(oldContract) this.inputs = this.inputs.map((v, i) => i > allabis[oldContract].N_COINS ? '0.00' : this.inputs[i])
 				if(newInputs) this.inputs = new Array(Object.keys(this.currencies).length).fill('0.00')
-	        	this.bgColors = Array(currentContract.N_COINS).fill({
+	        	this.bgColors = Array(this.contractAbis.N_COINS).fill({
 	        		backgroundColor: '#707070',
 	        		color: '#d0d0d0',
 	        	})
@@ -169,22 +172,22 @@
             async handle_sync_balances() {
 			    await common.update_fee_info();
 			    let calls = []
-			    for (let i = 0; i < currentContract.N_COINS; i++) {
-			    	calls.push([this.coins[i]._address, this.coins[i].methods.balanceOf(currentContract.default_account).encodeABI()])
-			    	calls.push([currentContract.swap._address, currentContract.swap.methods.balances(i).encodeABI()])
+			    for (let i = 0; i < this.contractAbis.N_COINS; i++) {
+			    	calls.push([this.coins[i]._address, this.coins[i].methods.balanceOf(state.default_account).encodeABI()])
+			    	calls.push([state.currentContract.swap._address, state.currentContract.swap.methods.balances(i).encodeABI()])
 			    }
-			    let aggcalls = await currentContract.multicall.methods.aggregate(calls).call()
+			    let aggcalls = await state.multicall.methods.aggregate(calls).call()
 			    let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
 			    helpers.chunkArr(decoded, 2).map((v, i) => {
 			    	Vue.set(this.wallet_balances, i, +v[0])
-			    	if(!currentContract.default_account) Vue.set(this.wallet_balances, i, 0)
+			    	if(!state.default_account) Vue.set(this.wallet_balances, i, 0)
 			    	Vue.set(this.balances, i, +v[1])
 			    })
 			    if (this.max_balances) {
 			        this.disabled = true;
-			        for (let i = 0; i < currentContract.N_COINS; i++) {
-			        	let amount = this.wallet_balances[i] * currentContract.c_rates[i]
-			        	if(!this.depositc) amount = this.wallet_balances[i] / allabis[currentContract.currentContract].coin_precisions[i]
+			        for (let i = 0; i < this.contractAbis.N_COINS; i++) {
+			        	let amount = this.wallet_balances[i] * state.currentContract.c_rates[i]
+			        	if(!this.depositc) amount = this.wallet_balances[i] / this.contractAbis.coin_precisions[i]
 			            var val = Math.floor(amount * 100) / 100;
 			            val = val.toFixed(2)
 			            Vue.set(this.inputs, i, val)
@@ -194,19 +197,19 @@
 			        this.disabled = false;
 			},
 			async handle_add_liquidity() {
-				let calls = [...Array(currentContract.N_COINS).keys()].map(i=>
-						[currentContract.coins[i]._address, currentContract.coins[i].methods.balanceOf(currentContract.default_account).encodeABI()]
+				let calls = [...Array(this.contractAbis.N_COINS).keys()].map(i=>
+						[state.currentContract.coins[i]._address, state.currentContract.coins[i].methods.balanceOf(state.default_account).encodeABI()]
 					)
-				calls.push([currentContract.swap_token._address, currentContract.swap_token.methods.totalSupply().encodeABI()])
-				let aggcalls = await currentContract.multicall.methods.aggregate(calls).call()
+				calls.push([state.currentContract.swap_token._address, state.currentContract.swap_token.methods.totalSupply().encodeABI()])
+				let aggcalls = await state.multicall.methods.aggregate(calls).call()
 				let decoded = aggcalls[1].map(hex=>web3.eth.abi.decodeParameter('uint256',hex))
 				decoded.slice(0, decoded.length-1).forEach((balance, i) => {
-			        let amount = BN(this.inputs[i]).div(BN(currentContract.c_rates[i])).toFixed(0,1);
+			        let amount = BN(this.inputs[i]).div(BN(state.currentContract.c_rates[i])).toFixed(0,1);
 			        if(Math.abs(balance/amount-1) < 0.005) {
 			            Vue.set(this.amounts, i, BN(balance).toFixed(0,1));
 			        }
 			        else {
-			            Vue.set(this.amounts, i, BN(this.inputs[i]).div(BN(currentContract.c_rates[i])).toFixed(0,1)); // -> c-tokens
+			            Vue.set(this.amounts, i, BN(this.inputs[i]).div(BN(state.currentContract.c_rates[i])).toFixed(0,1)); // -> c-tokens
 			        }
 				})
 				let total_supply = +decoded[decoded.length-1];
@@ -216,26 +219,26 @@
 			        await common.ensure_allowance(this.amounts, false);
 			    }
 			    else {
-			    	let amounts = this.inputs.map((v, i)=>BN(v).times(currentContract.coin_precisions[i]).toFixed(0))
+			    	let amounts = this.inputs.map((v, i)=>BN(v).times(this.contractAbis.coin_precisions[i]).toFixed(0))
 			    	await common.ensure_allowance(amounts, true)
 			    }
 			    var token_amount = 0;
 			    if(total_supply > 0) {    
-			        token_amount = await currentContract.swap.methods.calc_token_amount(this.amounts, true).call();
+			        token_amount = await state.currentContract.swap.methods.calc_token_amount(this.amounts, true).call();
 			        token_amount = BN(Math.floor(token_amount * 0.99).toString()).toFixed(0,1);
 			    }
 			    let nonZeroInputs = this.inputs.filter(Number).length
 			    if(this.depositc) {
-			    	await currentContract.swap.methods.add_liquidity(this.amounts, token_amount).send({
-				        from: currentContract.default_account,
+			    	await state.currentContract.swap.methods.add_liquidity(this.amounts, token_amount).send({
+				        from: state.default_account,
 				        gas: 1300000
 				    });
 				}
 				else {
-			    	let amounts = this.inputs.map((v, i)=>BN(v).times(currentContract.coin_precisions[i]).toFixed(0))
+			    	let amounts = this.inputs.map((v, i)=>BN(v).times(this.contractAbis.coin_precisions[i]).toFixed(0))
 			    	let gas = contractGas.depositzap[this.currentPool].deposit(nonZeroInputs) | 0
-					await currentContract.deposit_zap.methods.add_liquidity(amounts, token_amount).send({
-						from: currentContract.default_account,
+					await state.currentContract.deposit_zap.methods.add_liquidity(amounts, token_amount).send({
+						from: state.default_account,
 						gas: gas
 					})
 				}
@@ -251,14 +254,14 @@
 	                Vue.set(this.bgColors, i, 'blue');
 
 	            if (this.sync_balances) {
-	                for (let j = 0; j < currentContract.N_COINS; j++)
+	                for (let j = 0; j < this.contractAbis.N_COINS; j++)
 	                    if (j != i) {
 	                        var value_j = this.inputs[j]
 
-	                        if (this.balances[i] * currentContract.c_rates[i] > 1) {
+	                        if (this.balances[i] * state.currentContract.c_rates[i] > 1) {
 	                            // proportional
-	                            var newval = value / currentContract.c_rates[i] * this.balances[j] / this.balances[i];
-	                            newval = Math.floor(newval * currentContract.c_rates[j] * 100) / 100;
+	                            var newval = value / state.currentContract.c_rates[i] * this.balances[j] / this.balances[i];
+	                            newval = Math.floor(newval * state.currentContract.c_rates[j] * 100) / 100;
 	                            setInputs && Vue.set(this.inputs, j, newval);
 
 	                        } else {

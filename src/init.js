@@ -8,7 +8,7 @@ import BurnerConnectProvider from "@burner-wallet/burner-connect-provider";
 import Onboard from 'bnc-onboard'
 
 import * as common from './utils/common.js'
-import * as currentContract from './contract.js'
+import { contract, init as initContracts } from './contract.js'
 import { infura_url } from './allabis.js'
 import { multicall_address, multicall_abi } from './allabis'
 
@@ -51,19 +51,19 @@ export const onboard = Onboard({
     },
     network: network => {
       if(network != 1) {
-        currentContract.contract.error = 'Error: wrong network type. Please switch to mainnet';
-        currentContract.contract.showShares = false
+        contract.error = 'Error: wrong network type. Please switch to mainnet';
+        contract.showShares = false
         window.web3 = new Web3(infura_url)
       }
       else {
-        currentContract.contract.error = ''
-        currentContract.contract.showShares = true;
+        contract.error = ''
+        contract.showShares = true;
       }
     },
     address: account => {
-      if(currentContract.contract.default_account)
+      if(contract.default_account)
         common.update_fee_info()
-      currentContract.contract.default_account = account;
+      contract.default_account = account;
     }
   },
   walletSelect: {
@@ -105,7 +105,7 @@ export const onboard = Onboard({
 
 });
 
-async function init(init = true) {
+async function init(contractName, init = true) {
   console.time('initswap')
 	//try catch for checking cancel dialog
 	//const provider = await web3Modal.connect();
@@ -114,16 +114,14 @@ async function init(init = true) {
 	window.web3 = web3;
   window.web3provider = web3;*/
   try {
-    currentContract.contract.initializedContracts = false;
+    contract.currentName = contractName
     let userSelectedWallet = await onboard.walletSelect(localStorage.getItem('selectedWallet'));
     if(userSelectedWallet) await onboard.walletCheck();
     else window.web3 = new Web3(infura_url)
-    currentContract.contract.web3 = window.web3
-    currentContract.contract.multicall = new web3.eth.Contract(multicall_abi, multicall_address)
-
-    var default_account = (await web3.eth.getAccounts())[0];
-    currentContract.contract.default_account = default_account;
-    if(init) await currentContract.init();
+    contract.web3 = contract.web3 || window.web3
+    contract.multicall = contract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
+    if(!contract.default_account) contract.default_account = (await web3.eth.getAccounts())[0];
+    if(init) await initContracts(contractName);
     console.timeEnd('initswap')
   }
   catch(err) {

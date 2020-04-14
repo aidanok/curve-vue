@@ -14,13 +14,13 @@
       </ul>
       <p>
         <b>Fee:</b> 
-        <span id='fee-info' :class="{'loading line': !fee}">
+        <span id='fee-info' :class="{'loading line': fee == null}">
           <span v-show = 'fee'> {{fee && fee.toFixed(3)}}</span>
         </span>%
       </p>
       <p>
         <b>Admin fee:</b> 
-        <span id='admin-fee-info' :class="{'loading line': admin_fee}"> {{admin_fee && admin_fee.toFixed(3)}}</span>%
+        <span id='admin-fee-info' :class="{'loading line': admin_fee == null}"> {{admin_fee && admin_fee.toFixed(3)}}</span>%
       </p>
     </fieldset>
     <fieldset id="lp-info-container" v-show='totalShare > 0 && initializedContracts'>

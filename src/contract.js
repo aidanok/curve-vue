@@ -114,6 +114,7 @@ export const gas = {
 }
 
 let initState = {
+	initializedContracts: false,
 	balances: [],
 	wallet_balances: [],
 	underlying_coins: [],
@@ -123,6 +124,8 @@ let initState = {
 	l_info: [],
 	totalShare: 0,
 	showShares: false,
+	fee: null,
+	admin_fee: null,
 }
 
 const state = Vue.observable({
@@ -131,55 +134,24 @@ const state = Vue.observable({
 	allInitContracts: [],
 	contracts: {
 		compound: {
-			currentContract: 'compound',
-			balances: [],
-			wallet_balances: [],
-			underlying_coins: [],
-			c_rates: [],
-			bal_info: [],
-			total: 0,
-			l_info: [],
-			totalShare: 0,
-			showShares: false,
+			...initState,
 		},
 		usdt: {
-			currentContract: 'usdt',
-			balances: [],
-			wallet_balances: [],
-			underlying_coins: [],
-			c_rates: [],
-			bal_info: [],
-			total: 0,
-			l_info: [],
-			totalShare: 0,
-			showShares: false,
+			...initState
 		},
 		iearn: {
-			currentContract: 'iearn',
-			balances: [],
-			wallet_balances: [],
-			underlying_coins: [],
-			c_rates: [],
-			bal_info: [],
-			total: 0,
-			l_info: [],
-			totalShare: 0,
-			showShares: false,
+			...initState
 		},
 		busd: {
-			currentContract: 'busd',
-			balances: [],
-			wallet_balances: [],
-			underlying_coins: [],
-			c_rates: [],
-			bal_info: [],
-			total: 0,
-			l_info: [],
-			totalShare: 0,
-			showShares: false,
+			...initState
 		},
 	},
-	currentContract: 'compound',
+	currentName: 'compound',
+	get currentContract() {
+		return this.contracts[this.currentName]
+	},
+
+
 	currencies: currencies.compound,
 	N_COINS: N_COINS,
 	coin_precisions: coin_precisions,
@@ -228,65 +200,89 @@ const state = Vue.observable({
 
 export let contract = state
 
+console.log(state.contracts[state.currentName], "CUR CONT")
+
 export const getters = {
-	currentPool: () => state.currentContract,
-	bal_info: () => state.bal_info,
-	balTotal: () => state.total,
-	l_info: () => state.l_info,
-	totalShare: () => state.totalShare,
-	totalShare: () => state.totalShare,
-	currencies: () => state.currencies,
-	fee: () => state.fee * 100,
-	admin_fee: () => state.admin_fee * 100,
-	initializedContracts: () => state.initializedContracts,
-	showSlippage: () => state.showSlippage,
+	currentPool: () => {
+		console.log(state.currentName, "WTF")
+		return state.currentName
+	},
+	bal_info: () => state.contracts[state.currentName].bal_info,
+	balTotal: () => state.contracts[state.currentName].total,
+	l_info: () => state.contracts[state.currentName].l_info,
+	totalShare: () => state.contracts[state.currentName].totalShare,
+	totalShare: () => state.contracts[state.currentName].totalShare,
+	fee: () => {
+		return state.contracts[state.currentName].fee * 100
+	},
+	admin_fee: () => {
+		return state.contracts[state.currentName].admin_fee * 100
+	},
+	initializedContracts: () => state.contracts[state.currentName].initializedContracts,
+	contractAbis: () => allabis[state.currentName],
+	N_COINS: () => state.contracts[state.currentName].N_COINS,
+
+
+	currencies: () => {
+		console.log(state.currentName, "CUR NAME")
+		return currencies[state.currentName]
+	},
 	slippage: () => state.slippage,
-	N_COINS: () => state.N_COINS,
+	showSlippage: () => state.showSlippage,
 	error: () => state.error,
 	showShares: () => state.showShares
 }
 
+export function newContract(contractName, contract, abi, address) {
 
-export async function init(contract, refresh = false) {
+}
+
+export async function init(contractName = 'compound', refresh = false) {
 	console.time('init')
 	//contract = contracts.compound for example
-
-	if(state.initializedContracts && contract.currentContract == state.currentContract && !refresh) return Promise.resolve();
-	if(contract && (contract.currentContract == state.currentContract || state.contracts[contract.currentContract].initializedContracts) && !refresh) return Promise.resolve();
-	if(!contract) contract = state
+	let contract = state.contracts[contractName]
+	console.log(contractName, "CONTRACT NAME")
+	state.currentName = contractName
+	console.log(contract.initializedContracts, "initialized contracts")
+	if(contract.initializedContracts && !refresh) return Promise.resolve();
+	console.log('init', contractName)
 	try {
         let networkId = await web3.eth.net.getId();
         if(networkId != 1) {
-            this.error = 'Error: wrong network type. Please switch to mainnet';
+            contract.error = 'Error: wrong network type. Please switch to mainnet';
         }
     }
     catch(err) {
         console.error(err);
-        this.error = 'There was an error connecting. Please refresh page';
+        contract.error = 'There was an error connecting. Please refresh page';
     }
 
-    if(state.currentContract == 'compound') {
-	    state.old_swap = new web3.eth.Contract(allabis[state.currentContract].old_swap_abi, old_swap_address);
-	    state.old_swap_token = new web3.eth.Contract(ERC20_abi, old_token_address);
+    let calls = [];
+    if(contractName == 'compound') {
+	    contract.old_swap = new web3.eth.Contract(allabis[contractName].old_swap_abi, old_swap_address);
+	    contract.old_swap_token = new web3.eth.Contract(ERC20_abi, old_token_address);
+    	calls.push(
+    		[contract.old_swap_token._address, contract.old_swap_token.methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()
+    	])
     }
-    state.deposit_zap = new web3.eth.Contract(allabis[state.currentContract].deposit_abi, allabis[state.currentContract].deposit_address)
-    contract.swap = new web3.eth.Contract(allabis[contract.currentContract].swap_abi, allabis[contract.currentContract].swap_address);
-    contract.swap_token = new web3.eth.Contract(ERC20_abi, allabis[contract.currentContract].token_address);
+    contract.deposit_zap = new web3.eth.Contract(allabis[contractName].deposit_abi, allabis[contractName].deposit_address)
+    contract.swap = new web3.eth.Contract(allabis[contractName].swap_abi, allabis[contractName].swap_address);
+    contract.swap_token = new web3.eth.Contract(ERC20_abi, allabis[contractName].token_address);
     contract.coins = []
     contract.underlying_coins = []
-    let calls = [];
     if(window.location.href.includes('withdraw_old')) 
-      calls.push(...(await common.update_fee_info('old', contract, false)))
+      calls.push(...(await common.update_fee_info('old', contractName, false)))
   	else 
-      calls.push(...(await common.update_fee_info('new', contract, false)));
-    for (let i = 0; i < allabis[contract.currentContract].N_COINS; i++) {
+      calls.push(...(await common.update_fee_info('new', contractName, false)));
+    for (let i = 0; i < allabis[contractName].N_COINS; i++) {
     	calls.push([contract.swap._address, contract.swap.methods.coins(i).encodeABI()])
     	calls.push([contract.swap._address, contract.swap.methods.underlying_coins(i).encodeABI()])
     }
-    await common.multiInitState(calls, contract, true)
+    console.log(calls, "CALLS")
+    await common.multiInitState(calls, contractName, true)
   	contract.initializedContracts = true;
   	console.timeEnd('init')
-  	state.allInitContracts.push(contract.currentContract)
+  	state.allInitContracts.push(contractName)
   	console.log([...state.allInitContracts])
   	return;
     let aggcalls = await state.multicall.methods.aggregate(calls).call()
@@ -294,7 +290,7 @@ export async function init(contract, refresh = false) {
     chunkArr(decoded, 2).map((v, i) => {
     	var addr = v[0];
         let coin_abi = cERC20_abi
-        if(['iearn', 'busd'].includes(contract.currentContract)) coin_abi = yERC20_abi
+        if(['iearn', 'busd'].includes(contractName)) coin_abi = yERC20_abi
         contract.coins.push(new web3.eth.Contract(coin_abi, addr));
         var underlying_addr = v[1];
         contract.underlying_coins.push(new web3.eth.Contract(ERC20_abi, underlying_addr));

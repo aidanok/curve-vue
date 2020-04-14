@@ -73,7 +73,7 @@
 
 <script>
   import BalancesInfo from '../components/BalancesInfo.vue'
-  import { getters, contract as currentContract, changeContract, poolMenu } from '../contract'
+  import { getters, contract as state, init as initContract, poolMenu } from '../contract'
   import init from '../init'
 
   export default {
@@ -91,11 +91,11 @@
     },
     methods: {
       changePools(pool) {
-        changeContract(pool)
+        initContract(pool)
       },
       async changeAccounts() {
         localStorage.removeItem('selectedWallet')
-        currentContract.totalShare = 0
+        state.currentContract.totalShare = 0
         init(false)
       }
     },

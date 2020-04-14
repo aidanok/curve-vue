@@ -95,7 +95,7 @@
 
 <script>
     import * as common from '../utils/common.js'
-    import { getters, contract as currentContract, gas as contractGas} from '../contract'
+    import { getters, contract as state, gas as contractGas} from '../contract'
     import * as helpers from '../utils/helpers'
     import allabis from '../allabis'
 
@@ -125,11 +125,14 @@
             c_rates: [],
         }),
         created() {
-            this.$watch(()=>currentContract.default_account, (val, oldval) => {
+            this.$watch(()=>state.default_account, (val, oldval) => {
                 if(!oldval) return;
                 if(val.toLowerCase() != oldval.toLowerCase()) this.mounted();
             })
-            this.$watch(()=>currentContract.initializedContracts, val => {
+            this.$watch(()=>state.currentContract, val => {
+                this.mounted()
+            })
+            this.$watch(()=>state.currentContract.initializedContracts, val => {
                 if(val) this.mounted();
                 console.timeEnd('initswap')
             })
@@ -151,8 +154,8 @@
         },
         computed: {
             precisions() {
-                if(this.swapwrapped) return allabis[currentContract.currentContract].wrapped_precisions;
-                return allabis[currentContract.currentContract].coin_precisions
+                if(this.swapwrapped) return allabis[state.currentName].wrapped_precisions;
+                return allabis[state.currentName].coin_precisions
             },
             actualFromValue() {
                 if(!this.swapwrapped) return;
@@ -165,14 +168,15 @@
           ...getters,
         },
         mounted() {
-            if(currentContract.initializedContracts) this.mounted();
+            if(state.currentContract.initializedContracts) this.mounted();
         },
         methods: {        
             async mounted() {
-                this.c_rates = currentContract.c_rates
-                this.coins = currentContract.underlying_coins
+                console.log(state.currentContract, "CUR CONT SWAP")
+                this.c_rates = state.currentContract.c_rates
+                this.coins = state.currentContract.underlying_coins
                 if(this.swapwrapped) {
-                    this.coins = currentContract.coins
+                    this.coins = state.currentContract.coins
                 }
                 this.disabled = false;
                 this.from_cur_handler()
@@ -191,8 +195,8 @@
                     this.toInput = dy;
                     this.exchangeRate = (dy_ / dx_).toFixed(4);
                     if(this.swapwrapped) {
-                        let cdy_ = (dy_ * this.c_rates[this.to_currency] * allabis[currentContract.currentContract].wrapped_precisions[this.to_currency])
-                        let cdx_ = (dx_ * this.c_rates[this.from_currency] * allabis[currentContract.currentContract].wrapped_precisions[this.from_currency])
+                        let cdy_ = (dy_ * this.c_rates[this.to_currency] * allabis[state.currentName].wrapped_precisions[this.to_currency])
+                        let cdx_ = (dx_ * this.c_rates[this.from_currency] * allabis[state.currentName].wrapped_precisions[this.from_currency])
                         this.exchangeRate = (cdy_ / cdx_).toFixed(4)
                     }
                     if(this.exchangeRate <= 0.98) this.bgColor = 'red'
@@ -214,7 +218,8 @@
                 this.promise = helpers.makeCancelable(promise)
             },
             async from_cur_handler() {
-                if (cBN(await currentContract.underlying_coins[this.from_currency].methods.allowance(currentContract.default_account, currentContract.swap_address).call()) > currentContract.max_allowance.div(cBN(2)))
+                console.log(state.currentName, 'state contract name name')
+                if (cBN(await state.currentContract.underlying_coins[this.from_currency].methods.allowance(state.default_account, allabis[state.currentName].swap_address).call()) > state.max_allowance.div(cBN(2)))
                     this.inf_approval = true;
                 else
                     this.inf_approval = false;
@@ -234,7 +239,7 @@
                 await this.set_to_amount();
             },
             async set_max_balance() {
-                let balance = await this.coins[this.from_currency].methods.balanceOf(currentContract.default_account).call();
+                let balance = await this.coins[this.from_currency].methods.balanceOf(state.default_account).call();
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[this.from_currency]
                     ) / 100
@@ -242,7 +247,7 @@
                 await this.set_to_amount();
             },
             async highlight_input() {
-                let balance = parseFloat(await this.coins[this.from_currency].methods.balanceOf(currentContract.default_account).call()) /
+                let balance = parseFloat(await this.coins[this.from_currency].methods.balanceOf(state.default_account).call()) /
                         this.precisions[this.from_currency];
                 if (this.fromInput > balance)
                     this.fromBgColor = 'red'
@@ -250,12 +255,12 @@
                     this.fromBgColor = 'blue'
             },
             async set_from_amount(i) {
-                let balance = await this.coins[i].methods.balanceOf(currentContract.default_account).call();
+                let balance = await this.coins[i].methods.balanceOf(state.default_account).call();
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[i]
                     ) / 100
                 if (this.fromInput == '' || this.val == 0) {
-                    if(!currentContract.default_account) balance = 0
+                    if(!state.default_account) balance = 0
                     this.fromInput = amount.toFixed(2)
                 }
                 this.maxBalance = amount.toFixed(2);
@@ -267,19 +272,19 @@
                     var dx_ = this.fromInput;
                     var dx = cBN(Math.round(dx_ * this.precisions[i])).toFixed(0,1);
                     let calls = [
-                        [currentContract.swap._address, currentContract.swap.methods.balances(i).encodeABI()],
+                        [state.currentContract.swap._address, state.currentContract.swap.methods.balances(i).encodeABI()],
                     ]
                     if(!this.swapwrapped)
-                        calls.push([currentContract.swap._address, currentContract.swap.methods.get_dy_underlying(i, j, dx).encodeABI()])
+                        calls.push([state.currentContract.swap._address, state.currentContract.swap.methods.get_dy_underlying(i, j, dx).encodeABI()])
                     else {
                         //dx = cBN(dx).times(currentContract.c_rates[i])
-                        calls.push([currentContract.swap._address, currentContract.swap.methods.get_dy(i, j, dx).encodeABI()])
+                        calls.push([state.currentContract.swap._address, state.currentContract.swap.methods.get_dy(i, j, dx).encodeABI()])
                     }
-                    calls.push([this.coins[this.to_currency]._address , this.coins[this.to_currency].methods.balanceOf(currentContract.default_account).encodeABI()])
-                    let aggcalls = await currentContract.multicall.methods.aggregate(calls).call()
+                    calls.push([this.coins[this.to_currency]._address , this.coins[this.to_currency].methods.balanceOf(state.default_account).encodeABI()])
+                    let aggcalls = await state.multicall.methods.aggregate(calls).call()
                     let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
                     let [b, get_dy_underlying, balance] = decoded
-                    b = +b * currentContract.c_rates[i];
+                    b = +b * state.currentContract.c_rates[i];
                     if (b >= 0.001) {
                         // In c-units
                         var dy_ = +get_dy_underlying / this.precisions[j];
@@ -296,7 +301,8 @@
             async handle_trade() {
                 var i = this.from_currency
                 var j = this.to_currency;
-                var b = parseInt(await currentContract.swap.methods.balances(i).call()) / currentContract.c_rates[i];
+                console.log(state.currentContract, 'current contract')
+                var b = parseInt(await state.currentContract.swap.methods.balances(i).call()) / state.currentContract.c_rates[i];
                 let maxSlippage = this.maxSlippage / 100;
                 if(this.maxInputSlippage) maxSlippage = this.maxInputSlippage / 100;
                 if (b >= 0.001) {
@@ -304,20 +310,20 @@
                     var min_dy = Math.floor(this.toInput * (1-maxSlippage) * this.precisions[j]);
                     dx = cBN(dx.toString()).toFixed(0);
                     if (this.inf_approval)
-                        await common.ensure_underlying_allowance(i, currentContract.max_allowance, [], undefined, this.swapwrapped)
+                        await common.ensure_underlying_allowance(i, state.max_allowance, [], undefined, this.swapwrapped)
                     else
                         await common.ensure_underlying_allowance(i, dx, [], undefined, this.swapwrapped);
                     min_dy = cBN(min_dy.toString()).toFixed(0);
-                    let exchangeMethod = currentContract.swap.methods.exchange_underlying
-                    if(this.swapwrapped) exchangeMethod = currentContract.swap.methods.exchange
+                    let exchangeMethod = state.currentContract.swap.methods.exchange_underlying
+                    if(this.swapwrapped) exchangeMethod = state.currentContract.swap.methods.exchange
                     await exchangeMethod(i, j, dx, min_dy).send({
-                            from: currentContract.default_account,
+                            from: state.default_account,
                             gas: this.swapwrapped ? contractGas.swap[this.currentPool].exchange : contractGas.swap[this.currentPool].exchange_underlying,
                         });
                     
                     await common.update_fee_info();
                     this.from_cur_handler();
-                    let balance = await this.coins[i].methods.balanceOf(currentContract.default_account).call();
+                    let balance = await this.coins[i].methods.balanceOf(state.default_account).call();
                     let amount = Math.floor(
                             100 * parseFloat(balance) / this.precisions[i]
                         ) / 100
