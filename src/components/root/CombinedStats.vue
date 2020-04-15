@@ -12,13 +12,14 @@
 		      	<a href='https://iearn.finance/pool' v-show="currency == 'susd'">susd</a>
 		      </p>
 		      <stats :pool= 'currency'/>
+		      {{currentContract.contracts[currency].bal_info}}
 		      <balances-info 
-			      :bal_info = 'bal_infos[currency]'
-			      :total = 'totals[i]'
-			      :l_info = 'l_infos[currency]'
-			      :totalShare = 'totalShares[i]'
-			      :fee = 'fees[i]'
-			      :admin_fee = 'admin_fees[i]'
+			      :bal_info = 'currentContract.contracts[currency].bal_info'
+			      :total = 'currentContract.contracts[currency].total'
+			      :l_info = 'currentContract.contracts[currency].l_info'
+			      :totalShare = 'currentContract.contracts[currency].totalShares'
+			      :fee = 'currentContract.contracts[currency].fee * 100'
+			      :admin_fee = 'currentContract.contracts[currency].admin_fee'
 			      :pool = 'currency'
 			      :currencies = 'allCurrencies[currency]'
 			      />
@@ -71,6 +72,9 @@
             })
         },
         computed: {
+          currentContract() {
+          	return currentContract
+          },
           allCurrencies() {
           	return Object.assign(allCurrencies, {
           		susd: {

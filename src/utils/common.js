@@ -125,6 +125,7 @@ export function update_rates(version = 'new', contractName) {
     let calls = [];
     for (let i = 0; i < allabis[contractName].N_COINS; i++) {
         let address = allabis[contractName].coins[i]
+        if(contractName == 'susd') console.log(i, address, "COINS I address")
         /*
         rate: uint256 = cERC20(self.coins[i]).exchangeRateStored()
         supply_rate: uint256 = cERC20(self.coins[i]).supplyRatePerBlock()
@@ -139,7 +140,7 @@ export function update_rates(version = 'new', contractName) {
         else if(['iearn', 'busd', 'susd'].includes(contractName)) {
             //get_virtual_price
             if(contractName == 'susd' && i == 1)
-                calls.push([address, '0xbb7b8b80'])
+                calls.push([allabis.iearn.swap_address, '0xbb7b8b80'])
             else {
                 //getPricePerFullShare
                 calls.push([address, '0x77c7b8fc'])
@@ -233,6 +234,10 @@ export function decodeRates(decodedCalls, contractName, initContracts = false, b
     let ratesDecoded = initContracts ? 
         decodedCalls.slice(4+allabis[contractName].N_COINS) : decodedCalls.slice(4+allabis[contractName].N_COINS, decodedCalls.length-allabis[contractName].N_COINS*2)
 
+
+    console.log(ratesDecoded, "RATES DECODED")
+
+
     if(['iearn', 'busd'].includes(contractName)) {
         ratesDecoded.map((v, i) => {
             if(checkTethered(contractName, i)) {
@@ -246,6 +251,7 @@ export function decodeRates(decodedCalls, contractName, initContracts = false, b
     }
     else {
         chunkArr(ratesDecoded ,3).map((v, i) => {
+            console.log(v, i, "RATES ")
             if(checkTethered(contractName, i)) {
                 Vue.set(contract.c_rates, i, 1 / allabis[contractName].coin_precisions[i]);
             }
@@ -300,8 +306,9 @@ export async function multiInitAllState(calls, contractNames) {
     web3 = currentContract.web3 || new Web3(infura_url)
     multicall = currentContract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
     console.log(calls, "CALLS TO BE AGG")
-    aggcalls = await multicall.methods.aggregate(calls.slice(83,84)).call()
-/*    let slices = [17, 19, 20, 20, 16]
+    aggcalls = await multicall.methods.aggregate(calls).call()
+    console.log(aggcalls, 'DECODED CALLS')
+    let slices = [17, 19, 20, 20, 16]
 
     for(let [i, contractName] of contractNames.entries()) {
         let start = 0;
@@ -309,15 +316,15 @@ export async function multiInitAllState(calls, contractNames) {
         let end = slices[i]
         let slicedCalls = [
             aggcalls[0],
-            aggcalls.slice(start, start + end)
+            aggcalls[1].slice(start, start + end)
         ]
         await multiInitState(calls, contractName, true, slicedCalls)
-    }*/
+    }
 }
 
 export async function multiInitState(calls, contractName, initContracts = false, aggcalls = []) {
     console.log(contractName, "CONTRACT NAME")
-    let web3, multicall, default_account, block;
+    let contract, web3, multicall, default_account, block;
     contract = currentContract.contracts[contractName]
     web3 = currentContract.web3 || new Web3(infura_url)
     multicall = currentContract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
@@ -346,6 +353,7 @@ export async function multiInitState(calls, contractName, initContracts = false,
     
     decodeBalances(decoded, contractName, initContracts)
 
+    console.log(contract.c_rates, "C RATES")
 }
 
 export async function handle_migrate_new(page) {
