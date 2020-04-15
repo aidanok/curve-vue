@@ -117,9 +117,6 @@
             this.$watch(()=>state.currentContract.initializedContracts, val => {
                 if(val) this.mounted();
             })
-            this.$watch(()=>state.currentName, val => {
-            	this.mounted()
-            })
             this.$watch(()=>state.currentContract, (val, oldval) => {
             	this.setInputStyles(false, val, oldval)
                 if(currentContract.initializedContracts) this.mounted();

@@ -136,9 +136,14 @@ export function update_rates(version = 'new', contractName) {
             allabis[contractName].use_lending && !allabis[contractName].use_lending[i]) {
             Vue.set(contract.c_rates, i, 1 / allabis[contractName].coin_precisions[i]);
         }
-        else if(['iearn', 'busd'].includes(contractName)) {
-            //getPricePerFullShare
-            calls.push([address, '0x77c7b8fc'])
+        else if(['iearn', 'busd', 'susd'].includes(contractName)) {
+            //get_virtual_price
+            if(contractName == 'susd' && i == 1)
+                calls.push([address, '0xbb7b8b80'])
+            else {
+                //getPricePerFullShare
+                calls.push([address, '0x77c7b8fc'])
+            }
         }
         else {
             calls.push(
@@ -203,40 +208,30 @@ function checkTethered(contractName, i) {
         allabis[contractName].use_lending && !allabis[contractName].use_lending[i];
 }
 
-export async function multiInitState(calls, contractName, initContracts = false) {
-    console.log(contractName, "CONTRACT NAME")
-    let contract = currentContract.contracts[contractName]
-    let web3 = currentContract.web3 || new Web3(infura_url)
-    let multicall = new web3.eth.Contract(multicall_abi, multicall_address)
-    var default_account = currentContract.default_account;
-    let aggcalls = await multicall.methods.aggregate(calls).call()
-    var block = +aggcalls[0]
-    let decoded = aggcalls[1].map((hex, i) => 
-        (initContracts && contractName == 'compound' && i == 0 || i >= aggcalls[1].length-allabis[contractName].N_COINS*2) ? 
-            web3.eth.abi.decodeParameter('address', hex) : web3.eth.abi.decodeParameter('uint256', hex)
-    )
-    if(initContracts && contractName == 'compound') {
-        contract.oldBalance = decoded[0];
-        decoded = decoded.slice(1);
-    }
-    contract.fee = decoded[0] / 1e10;
-    contract.admin_fee = decoded[1] / 1e10;
-    var token_balance = decoded[2]
-    var token_supply = decoded[3]
-    let ratesDecoded = decoded.slice(4+allabis[contractName].N_COINS)
-    if(initContracts) {
-        let contractsDecoded = decoded.slice(-allabis[contractName].N_COINS*2)
-        chunkArr(contractsDecoded, 2).map((v, i) => {
-            var addr = v[0];
-            let coin_abi = cERC20_abi
-            if(['iearn', 'busd'].includes(contractName)) coin_abi = yERC20_abi
-            contract.coins.push(new web3.eth.Contract(coin_abi, addr));
-            var underlying_addr = v[1];
-            contract.underlying_coins.push(new web3.eth.Contract(ERC20_abi, underlying_addr));
-        })
-        ratesDecoded = decoded.slice(4+allabis[contractName].N_COINS, decoded.length-allabis[contractName].N_COINS*2)
-    }
 
+export function decodeContracts(decodedCalls, contractName) {
+    let contract = currentContract.contracts[contractName]
+
+    let contractsDecoded = decodedCalls.slice(-allabis[contractName].N_COINS*2)
+    chunkArr(contractsDecoded, 2).map((v, i) => {
+        var addr = v[0];
+        let coin_abi = cERC20_abi
+        if(['iearn', 'busd', 'susd'].includes(contractName)) coin_abi = yERC20_abi
+        if(contractName == 'susd' && i == 1) {
+            coin_abi = allabis.iearn.swap_abi
+            addr = allabis.iearn.swap_address
+        }
+        contract.coins.push(new web3.eth.Contract(coin_abi, addr));
+        var underlying_addr = v[1];
+        contract.underlying_coins.push(new web3.eth.Contract(ERC20_abi, underlying_addr));
+    })
+}
+
+export function decodeRates(decodedCalls, contractName, initContracts = false, block) {
+    let contract = currentContract.contracts[contractName]
+
+    let ratesDecoded = initContracts ? 
+        decodedCalls.slice(4+allabis[contractName].N_COINS) : decodedCalls.slice(4+allabis[contractName].N_COINS, decodedCalls.length-allabis[contractName].N_COINS*2)
 
     if(['iearn', 'busd'].includes(contractName)) {
         ratesDecoded.map((v, i) => {
@@ -262,11 +257,19 @@ export async function multiInitState(calls, contractName, initContracts = false)
             }
         })
     }
+}
+
+export function decodeBalances(decodedCalls, contractName) {
+    let contract = currentContract.contracts[contractName]
+    var default_account = currentContract.default_account;
+
+    var token_balance = decodedCalls[2]
+    var token_supply = decodedCalls[3]
 
     let balances = []
     contract.total = 0;
 
-    let balancesDecoded = decoded.slice(4, 4+allabis[contractName].N_COINS)
+    let balancesDecoded = decodedCalls.slice(4, 4+allabis[contractName].N_COINS)
     balancesDecoded.forEach((balance, i) => {
         Vue.set(contract.balances, i, +balance)
         balances[i] = +balance;
@@ -290,6 +293,59 @@ export async function multiInitState(calls, contractName, initContracts = false)
             //no need to set other values as v-show check is done based on totalShare
         }
     }
+}
+
+export async function multiInitAllState(calls, contractNames) {
+    let web3, multicall, aggcalls;
+    web3 = currentContract.web3 || new Web3(infura_url)
+    multicall = currentContract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
+    console.log(calls, "CALLS TO BE AGG")
+    aggcalls = await multicall.methods.aggregate(calls.slice(83,84)).call()
+/*    let slices = [17, 19, 20, 20, 16]
+
+    for(let [i, contractName] of contractNames.entries()) {
+        let start = 0;
+        if(i > 0) start = slices[i-1];
+        let end = slices[i]
+        let slicedCalls = [
+            aggcalls[0],
+            aggcalls.slice(start, start + end)
+        ]
+        await multiInitState(calls, contractName, true, slicedCalls)
+    }*/
+}
+
+export async function multiInitState(calls, contractName, initContracts = false, aggcalls = []) {
+    console.log(contractName, "CONTRACT NAME")
+    let web3, multicall, default_account, block;
+    contract = currentContract.contracts[contractName]
+    web3 = currentContract.web3 || new Web3(infura_url)
+    multicall = currentContract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
+    default_account = currentContract.default_account;
+    if(!aggcalls.length)
+        aggcalls = await multicall.methods.aggregate(calls).call()
+    console.log(aggcalls, "THE CALLS")
+    block = +aggcalls[0]
+    let decoded = aggcalls[1].map((hex, i) => 
+        (initContracts && contractName == 'compound' && i == 0 || i >= aggcalls[1].length-allabis[contractName].N_COINS*2) ? 
+            web3.eth.abi.decodeParameter('address', hex) : web3.eth.abi.decodeParameter('uint256', hex)
+    )
+    if(initContracts && contractName == 'compound') {
+        contract.oldBalance = decoded[0];
+        decoded = decoded.slice(1);
+    }
+    contract.fee = decoded[0] / 1e10;
+    contract.admin_fee = decoded[1] / 1e10;
+    let ratesDecoded = decoded.slice(4+allabis[contractName].N_COINS)
+    if(initContracts) {
+        decodeContracts(decoded, contractName);
+        ratesDecoded = decoded.slice(4+allabis[contractName].N_COINS, decoded.length-allabis[contractName].N_COINS*2)
+    }
+
+    decodeRates(decoded, contractName, initContracts, block)
+    
+    decodeBalances(decoded, contractName, initContracts)
+
 }
 
 export async function handle_migrate_new(page) {

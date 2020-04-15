@@ -137,14 +137,17 @@ const state = Vue.observable({
 			...initState,
 		},
 		usdt: {
-			...initState
+			...initState,
 		},
 		iearn: {
-			...initState
+			...initState,
 		},
 		busd: {
-			...initState
+			...initState,
 		},
+		susd: {
+			...initState,
+		}
 	},
 	currentName: 'compound',
 	get currentContract() {
@@ -237,12 +240,13 @@ export function newContract(contractName, contract, abi, address) {
 
 }
 
-export async function init(contractName = 'compound', refresh = false) {
+export async function init(contractName = 'compound', refresh = false, multiInitState = true) {
 	console.time('init')
 	//contract = contracts.compound for example
 	let contract = state.contracts[contractName]
 	console.log(contractName, "CONTRACT NAME")
 	state.currentName = contractName
+	console.log(contract, "THECONTRACT")
 	console.log(contract.initializedContracts, "initialized contracts")
 	if(contract.initializedContracts && !refresh) return Promise.resolve();
 	console.log('init', contractName)
@@ -265,7 +269,8 @@ export async function init(contractName = 'compound', refresh = false) {
     		[contract.old_swap_token._address, contract.old_swap_token.methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()
     	])
     }
-    contract.deposit_zap = new web3.eth.Contract(allabis[contractName].deposit_abi, allabis[contractName].deposit_address)
+    if(contractName != 'susd')
+    	contract.deposit_zap = new web3.eth.Contract(allabis[contractName].deposit_abi, allabis[contractName].deposit_address)
     contract.swap = new web3.eth.Contract(allabis[contractName].swap_abi, allabis[contractName].swap_address);
     contract.swap_token = new web3.eth.Contract(ERC20_abi, allabis[contractName].token_address);
     contract.coins = []
@@ -279,7 +284,11 @@ export async function init(contractName = 'compound', refresh = false) {
     	calls.push([contract.swap._address, contract.swap.methods.underlying_coins(i).encodeABI()])
     }
     console.log(calls, "CALLS")
-    await common.multiInitState(calls, contractName, true)
+    if(!multiInitState) {
+    	console.log("HERE not init")
+    	return calls
+    }
+    await common.multiInitState(calls, contractName, multiInitState)
   	contract.initializedContracts = true;
   	console.timeEnd('init')
   	state.allInitContracts.push(contractName)

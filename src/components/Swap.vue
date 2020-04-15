@@ -129,9 +129,6 @@
                 if(!oldval) return;
                 if(val.toLowerCase() != oldval.toLowerCase()) this.mounted();
             })
-            this.$watch(()=>state.currentContract, val => {
-                this.mounted()
-            })
             this.$watch(()=>state.currentContract.initializedContracts, val => {
                 if(val) this.mounted();
                 console.timeEnd('initswap')

@@ -32,11 +32,12 @@
 	import Web3 from 'web3'
 	import TotalBalances from './TotalBalances.vue'
 
-    import { getters, contract as currentContract, allCurrencies } from '../../contract'
+    import { getters, contract as currentContract, allCurrencies, init } from '../../contract'
     import contracts, { infura_url, ERC20_abi, cERC20_abi, yERC20_abi } from '../../allabis'
+    import * as common from '../../utils/common'
 
     import * as helpers from '../../utils/helpers'
-
+    //slice(83,84) calls get_virtual_price on the token contract, not swap contract
 	export default {
 		metaInfo: {
 	      title: 'Curve.fi - Stats',
@@ -65,11 +66,8 @@
 			admin_fees: [],
 		}),
 		created() {
-            this.$watch(()=>currentContract.initializedContracts, val => {
-                if(val) this.mounted();
-            })
-            this.$watch(()=>currentContract.currentContract, val => {
-            	if(currentContract.initializedContracts) this.mounted();
+            this.$watch(()=>currentContract.multicall, val => {
+                this.mounted();
             })
         },
         computed: {
@@ -91,16 +89,17 @@
           },
         },
         mounted() {
-            if(currentContract.initializedContracts) this.mounted();
+            if(currentContract.multicall) this.mounted();
         },
 		methods: {
 			async mounted() {
+				console.log('mounted')
 				this.fees = Array.from(4).fill(0)
 				this.admin_fees = Array.from(4).fill(0)
 				this.admin_fees = Array.from(4).fill(0)
 				this.admin_fees = Array.from(4).fill(0)
 				await this.init_contracts();
-				await this.update_fee_info();
+				//await this.update_fee_info();
 			},
 			poolLink(pool) {
 				if(pool == 'iearn') return 'y'
@@ -108,6 +107,12 @@
 				return pool
 			},
 			async init_contracts() {
+				let calls = await Promise.all(Object.keys(this.allContracts).map(p => init(p, false, false)))
+				console.log(calls, "ALL CALLS")
+				await common.multiInitAllState(calls.flat(), Object.keys(this.allContracts))
+				console.log(currentContract.contracts)
+				return;
+
 			    for(let [key, contract] of Object.entries(this.allContracts)) {
 			    	this.web3contracts[key] = {};
 				    this.web3contracts[key].swap = new web3.eth.Contract(contract.swap_abi, contract.swap_address);
