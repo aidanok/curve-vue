@@ -195,6 +195,9 @@
                 if(!this.swapwrapped) return;
                 return (this.toInput * this.c_rates(this.to_currency)[this.to_currency] * this.precisions(this.to_currency)).toFixed(2)
             },
+            allInitContracts() {
+                return Object.values(contract.contracts).filter(c=>c.initializedContracts).length
+            }
         },
         watch: {
             from_currency(val, oldval) {
@@ -216,7 +219,7 @@
         },
         async created() {
             //EventBus.$on('selected', this.selectPool)
-            this.$watch(()=>contract.allInitContracts.length, async (val) => {
+            this.$watch(()=>this.allInitContracts, async (val) => {
                 if(val == 4)
                     await this.mounted()
             })
@@ -257,7 +260,7 @@
                 if(!contractName && this.swapwrapped == 1) contractName = 'compound'
                 if(!contractName && this.swapwrapped == 2 && i < 3) contractName = 'iearn'
                 if(!contractName && this.swapwrapped == 2 && i == 3) contractName = 'busd'
-                if(!contractName) contractName = contract.currentContract
+                if(!contractName) contractName = contract.currentName
                 if(this.swapwrapped) return contractAbis[contractName].wrapped_precisions[i];
                 return contractAbis[contractName].coin_precisions[i]
             },

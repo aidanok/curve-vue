@@ -52,7 +52,9 @@
     },
     computed: {
       showShares: getters.showShares,
-      initializedContracts: getters.initializedContracts,
+      initializedContracts() {
+        return currentContract.contracts[this.pool || currentContract.currentName].initializedContracts
+      }
     }
   }
 </script>

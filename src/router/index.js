@@ -121,7 +121,7 @@ const pools = ['compound','usdt','y','iearn','busd']
 router.beforeEach(async (to, from, next) => {
   //if(from.path.includes('profit') && to.path.includes('profit')) return window.location.href = to.path
   if(['RootIndex', 'Donate', 'StatsDaily'].includes(to.name)) return next();
-  if(to.name == 'CombinedStats') {
+  if(to.name == 'CombinedStats' || to.name == 'Trade') {
     await init(null, false);
     return next();
   }

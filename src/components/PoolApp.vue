@@ -19,6 +19,7 @@
             <a href="https://iearn.finance/pool">sUSD</a>
             <p>____________</p>
             <router-link to='/'>Home</router-link>
+            <router-link to='/trade'>Trade</router-link>
             <router-link to='/combinedstats'>All stats</router-link>
             <a href="https://twitter.com/CurveFinance">#Twitter</a>
             <a href="https://t.me/curvefi">@Telegram</a>

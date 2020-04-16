@@ -41,6 +41,7 @@
 	import abis from '../../allabis'
 	import Decimal from 'break_infinity.js'
 	import * as helpers from '@/utils/helpers'
+	import * as common from '@/utils/common'
 
 
 	let BN = val => new Decimal(val)
@@ -196,12 +197,16 @@
 			//EventBus.$on('selected', this.selectPool)
 			EventBus.$on('changeTime', this.changeTime)
 			this.unwatch = this.$watch(()=>contract.initializedContracts, async (val) => {
-				let inits = await Promise.all(tradeStore.pools.map(p=>{
-					return init(contract.contracts[p == 'y' ? 'iearn' : p])
-				}))
+				let pools = tradeStore.pools.map(p=>p == 'y' ? 'iearn' : p)
+				let calls = await Promise.all(pools.map(p=>init(p, false, false)))
+				await common.multiInitAllState(calls.flat(), pools)
 				await updatePoolInfo()
                 this.mounted()
                 this.unwatch();
+            })
+            this.$watch(()=>this.allInitContracts, async (val) => {
+                if(val == 4)
+                    await this.mountReady()
             })
 		},
 		watch:{
@@ -212,9 +217,11 @@
 				let oldarr = oldval[1].concat();
 				if(arr.sort().toString() == oldarr.sort.toString()) this.mounted()
 				else {
-					let inits = await Promise.all(val[1].map(p=>{
-						return init(contract.contracts[p == 'y' ? 'iearn' : p])
+					let pools = val[1].map(p => p == 'y' ? 'iearn' : p)
+					let calls = await Promise.all(pools.map(p=>{
+						return init(p == 'y' ? 'iearn' : p, false, false)
 					}))
+					await common.multiInitAllState(calls.flat(), pools)
 					this.chart.showLoading()
 					//this.chart.xAxis[0].removePlotLine(1)
                 	//no need to as all 4 pools are loaded at page load
@@ -246,11 +253,6 @@
 		async mounted() {
 			this.chart = this.$refs.highcharts.chart
 			this.chart.showLoading();
-/*			await Promise.all(tradeStore.pools.map(p=>{
-				return init(contract.contracts[p == 'y' ? 'iearn' : p])
-			}))
-			await this.updatePoolInfo();*/
-			//this.mounted();
 		},
 		beforeDestroy() {
 			//EventBus.$off('selected', this.selectPool)
@@ -259,7 +261,10 @@
 		computed: {
 			selectChange() {
 				return [tradeStore.pairIdx, tradeStore.pools, tradeStore.interval]
-			}
+			},
+            allInitContracts() {
+                return Object.values(contract.contracts).filter(c=>c.initializedContracts).length
+            }
 		},
 		methods: {
 			setZoom() {
@@ -290,7 +295,6 @@
 			},
 			//we can go back in time! Time travelling!
 			changeTime(poolInfo) {
-				console.log(poolInfo)
 				tradeStore.poolInfo = poolInfo
 				let timestamp = poolInfo.timestamp || poolInfo[0].timestamp
 				this.chart.setTitle({ 
@@ -303,6 +307,17 @@
 				})
 				this.lastTimestamp = timestamp
 				this.mounted(timestamp)
+			},
+			async mountReady() {
+				console.time('tradeinit')
+				// let pools = tradeStore.pools.map(p=>p == 'y' ? 'iearn' : p)
+				// let calls = await Promise.all(pools.map(p=>init(p, false, false)))
+				// await common.multiInitAllState(calls.flat(), pools)
+				console.time('updatepoolinfo')
+				await updatePoolInfo();
+				console.timeEnd('updatepoolinfo')
+				console.timeEnd('tradeinit')
+				this.mounted();
 			},
 			async mounted(lastTimestamp) {
 				this.chart.showLoading()
@@ -351,7 +366,7 @@
 			 	let imax = Math.floor(100 * (1 + Math.log10(10) / Math.log10(balanceSum)))
 				this.imax = imax
 
-
+				console.time('depthcalcs')
 				let bxs = []
 				let axs = []
 				let ys = []
@@ -421,7 +436,7 @@
 				bids = bids.filter(b => b[0] > Math.max(Math.max(...bxs.map(xs=>Math.min(...xs))), 0.1) )
 				asks = asks.filter(a => a[0] < Math.min(Math.min(...axs.map(xs=>Math.max(...xs))), 10) )
                 bids = bids.reverse()
-
+                console.timeEnd('depthcalcs')
 				this.chart.hideLoading()
 				while(this.chart.series.length) {
 					this.chart.series[0].remove()

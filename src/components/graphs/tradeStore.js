@@ -58,6 +58,7 @@ export async function updatePoolInfo() {
 		state.poolInfo[key].supply = decoded[key*3+1]
 		state.poolInfo[key].virtual_price = decoded[key*3+2]
 		state.poolInfo[key].balances = cont.balances;
+		cont.c_rates = cont.c_rates.filter(rate => rate)
 		state.poolInfo[key].rates = cont.c_rates.map((r,i)=>+(BN(r).times(PRECISION).times(abis[pool].coin_precisions[i])))
 		state.poolInfo[key].timestamp = (Date.now() / 1000) | 0;
 	}

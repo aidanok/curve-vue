@@ -134,6 +134,7 @@ const state = Vue.observable({
 	allInitContracts: [],
 	contracts: {
 		compound: {
+			currentName: 'compound', 
 			initializedContracts: false,
 			balances: [],
 			wallet_balances: [],
@@ -147,7 +148,8 @@ const state = Vue.observable({
 			fee: null,
 			admin_fee: null,
 		},
-				usdt: {
+		usdt: {
+			currentName: 'usdt', 
 			initializedContracts: false,
 			balances: [],
 			wallet_balances: [],
@@ -161,7 +163,8 @@ const state = Vue.observable({
 			fee: null,
 			admin_fee: null,
 		},
-				iearn: {
+		iearn: {
+			currentName: 'iearn', 
 			initializedContracts: false,
 			balances: [],
 			wallet_balances: [],
@@ -175,7 +178,8 @@ const state = Vue.observable({
 			fee: null,
 			admin_fee: null,
 		},
-				busd: {
+		busd: {
+			currentName: 'busd', 
 			initializedContracts: false,
 			balances: [],
 			wallet_balances: [],
@@ -189,7 +193,8 @@ const state = Vue.observable({
 			fee: null,
 			admin_fee: null,
 		},
-				susd: {
+		susd: {
+			currentName: 'susd', 
 			initializedContracts: false,
 			balances: [],
 			wallet_balances: [],
@@ -258,11 +263,8 @@ const state = Vue.observable({
 
 export let contract = state
 
-console.log(state.contracts[state.currentName], "CUR CONT")
-
 export const getters = {
 	currentPool: () => {
-		console.log(state.currentName, "WTF")
 		return state.currentName
 	},
 	bal_info: () => state.contracts[state.currentName].bal_info,
@@ -282,7 +284,6 @@ export const getters = {
 
 
 	currencies: () => {
-		console.log(state.currentName, "CUR NAME")
 		return currencies[state.currentName]
 	},
 	slippage: () => state.slippage,
@@ -298,13 +299,10 @@ export function newContract(contractName, contract, abi, address) {
 export async function init(contractName = 'compound', refresh = false, multiInitState = true) {
 	console.time('init')
 	//contract = contracts.compound for example
+	console.log(contractName)
 	let contract = state.contracts[contractName]
-	console.log(contractName, "CONTRACT NAME")
 	state.currentName = contractName
-	console.log(contract, "THECONTRACT")
-	console.log(contract.initializedContracts, "initialized contracts")
 	if(contract.initializedContracts && !refresh) return Promise.resolve();
-	console.log('init', contractName)
 	try {
         let networkId = await web3.eth.net.getId();
         if(networkId != 1) {
@@ -338,16 +336,13 @@ export async function init(contractName = 'compound', refresh = false, multiInit
     	calls.push([contract.swap._address, contract.swap.methods.coins(i).encodeABI()])
     	calls.push([contract.swap._address, contract.swap.methods.underlying_coins(i).encodeABI()])
     }
-    console.log(calls, "CALLS")
     if(!multiInitState) {
-    	console.log("HERE not init")
     	return calls
     }
     await common.multiInitState(calls, contractName, multiInitState)
   	contract.initializedContracts = true;
   	console.timeEnd('init')
   	state.allInitContracts.push(contractName)
-  	console.log([...state.allInitContracts])
   	return;
     let aggcalls = await state.multicall.methods.aggregate(calls).call()
     let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('address', hex))
