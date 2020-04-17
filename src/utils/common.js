@@ -333,10 +333,12 @@ export async function multiInitState(calls, contractName, initContracts = false,
     if(!aggcalls.length)
         aggcalls = await multicall.methods.aggregate(calls).call()
     block = +aggcalls[0]
+    console.log(aggcalls, "AGG CALLS")
     let decoded = aggcalls[1].map((hex, i) => 
         (initContracts && contractName == 'compound' && i == 0 || i >= aggcalls[1].length-allabis[contractName].N_COINS*2) ? 
             web3.eth.abi.decodeParameter('address', hex) : web3.eth.abi.decodeParameter('uint256', hex)
     )
+    console.log(decoded, "DECODED CALLS")
     if(initContracts && contractName == 'compound') {
         contract.oldBalance = decoded[0];
         decoded = decoded.slice(1);

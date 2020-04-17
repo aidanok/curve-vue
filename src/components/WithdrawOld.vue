@@ -43,7 +43,7 @@
 <script>
 	import Vue from 'vue'
     import * as common from '../utils/common.js'
-    import { getters, contract as currentContract } from '../contract'
+    import { getters, contract as state } from '../contract'
     import * as helpers from '../utils/helpers'
 
     import BigNumber from 'bignumber.js'
@@ -73,15 +73,15 @@
     		amounts: [],
     	}),
         created() {
-        	this.inputStyles = Array(currentContract.N_COINS).fill({
+        	this.inputStyles = Array(this.contractAbis.N_COINS).fill({
         		backgroundColor: '#707070',
         		color: '#d0d0d0',
         	})
-            this.$watch(()=>currentContract.default_account, (val, oldval) => {
+            this.$watch(()=>state.default_account, (val, oldval) => {
                 if(!oldval) return;
                 if(val.toLowerCase() != oldval.toLowerCase()) this.mounted();
             })
-            this.$watch(()=>currentContract.initializedContracts, val => {
+            this.$watch(()=>state.currentContract.initializedContracts, val => {
                 if(val) this.mounted();
             })
         },
@@ -89,7 +89,7 @@
           ...getters,
         },
         mounted() {
-            if(currentContract.initializedContracts) this.mounted();
+            if(state.currentContract.initializedContracts) this.mounted();
         },
         methods: {
             async mounted() {
@@ -98,25 +98,25 @@
             	this.handle_change_share();
             },
             async update_balances() {
-			    if (currentContract.default_account) {
-			        for (let i = 0; i < currentContract.N_COINS; i++)
-			            Vue.set(this.wallet_balances, i, parseInt(await currentContract.coins[i].methods.balanceOf(currentContract.default_account).call()));
-			        this.token_balance = parseInt(await currentContract.old_swap_token.methods.balanceOf(currentContract.default_account).call());
+			    if (state.default_account) {
+			        for (let i = 0; i < this.contractAbis.N_COINS; i++)
+			            Vue.set(this.wallet_balances, i, parseInt(await state.currentContract.coins[i].methods.balanceOf(state.default_account).call()));
+			        this.token_balance = parseInt(await state.currentContract.old_swap_token.methods.balanceOf(state.default_account).call());
 			    }
 			    else {
 			        this.token_balance = 0;
 			    }
-			    for (let i = 0; i < currentContract.N_COINS; i++) {
-			        Vue.set(this.balances, i, parseInt(await currentContract.old_swap.methods.balances(i).call()));
-			        if(!currentContract.default_account) Vue.set(this.balances, i, 0)
+			    for (let i = 0; i < this.contractAbis.N_COINS; i++) {
+			        Vue.set(this.balances, i, parseInt(await state.currentContract.old_swap.methods.balances(i).call()));
+			        if(!state.default_account) Vue.set(this.balances, i, 0)
 			    }
-			    this.token_supply = parseInt(await currentContract.old_swap_token.methods.totalSupply().call());
+			    this.token_supply = parseInt(await state.currentContract.old_swap_token.methods.totalSupply().call());
 			},
 			async handle_change_amounts(i) {
 			    return function() {
-			        for (let j = 0; j < currentContract.N_COINS; j++) {
+			        for (let j = 0; j < this.contractAbis.N_COINS; j++) {
 			            var cur = $('#currency_' + j);
-			            if ((this.value > (this.balances[i] * currentContract.c_rates[i] * this.token_balance / this.token_supply)) & (j == i))
+			            if ((this.value > (this.balances[i] * state.currentContract.c_rates[i] * this.token_balance / this.token_supply)) & (j == i))
 			                Vue.set(this.inputStyles, j, Object.assign(this.inputStyles[j], {backgroundColor: 'red'}))
 			            else
 			                Vue.set(this.inputStyles, j, Object.assign(this.inputStyles[j], {backgroundColor: 'blue'}));
@@ -130,10 +130,10 @@
 			    }
 			},
 			async handle_remove_liquidity() {
-			    var deadline = Math.floor((new Date()).getTime() / 1000) + currentContract.trade_timeout;
+			    var deadline = Math.floor((new Date()).getTime() / 1000) + state.trade_timeout;
                 let min_amounts = []
-			    for (let i = 0; i < currentContract.N_COINS; i++) {
-			        Vue.set(this.amounts, i, cBN(Math.floor(this.inputs[i] / currentContract.c_rates[i]).toString()).toFixed(0,1)); // -> c-tokens
+			    for (let i = 0; i < this.contractAbis.N_COINS; i++) {
+			        Vue.set(this.amounts, i, cBN(Math.floor(this.inputs[i] / state.currentContract.c_rates[i]).toString()).toFixed(0,1)); // -> c-tokens
                     min_amounts[i] = cBN(0.97).multipliedBy(this.share/100).multipliedBy(cBN(this.balances[i]))
                     .multipliedBy(cBN(this.token_balance))
                     .div(cBN(this.token_supply))
@@ -141,16 +141,16 @@
                 }
 			    var txhash;
 			    if (this.share == '---') {
-			        await currentContract.swap.methods.remove_liquidity_imbalance(this.amounts, deadline).send({from: currentContract.default_account, gas: 1000000});
+			        await state.currentContract.swap.methods.remove_liquidity_imbalance(this.amounts, deadline).send({from: state.default_account, gas: 1000000});
 			    }
 			    else {
 			        var amount = cBN(Math.floor(this.share / 100 * this.token_balance).toString()).toFixed(0,1);
 			        if (this.share == 100)
-			            amount = await currentContract.old_swap_token.methods.balanceOf(currentContract.default_account).call();
-			        await currentContract.old_swap.methods.remove_liquidity(amount, deadline, min_amounts).send({from: currentContract.default_account, gas: 600000});
+			            amount = await state.currentContract.old_swap_token.methods.balanceOf(state.default_account).call();
+			        await state.currentContract.old_swap.methods.remove_liquidity(amount, deadline, min_amounts).send({from: state.default_account, gas: 600000});
 			    }
 			    if(share_val != '---') {
-			        for (let i = 0; i < currentContract.N_COINS; i++) {
+			        for (let i = 0; i < this.contractAbis.N_COINS; i++) {
 			            this.handle_change_amounts(i)();
 			        }
 			    }
@@ -166,9 +166,9 @@
 			    else if ((this.share > 100) | (this.share < 0))
 			        this.shareStyles.backgroundColor = 'red'
 
-			    for (let i = 0; i < currentContract.N_COINS; i++) {
+			    for (let i = 0; i < this.contractAbis.N_COINS; i++) {
 			        if ((this.share >=0) & (this.share <= 100)) {
-			            Vue.set(this.inputs, i, (this.share / 100 * this.balances[i] * currentContract.c_rates[i] * this.token_balance / this.token_supply).toFixed(2))
+			            Vue.set(this.inputs, i, (this.share / 100 * this.balances[i] * state.currentContract.c_rates[i] * this.token_balance / this.token_supply).toFixed(2))
 			        }
 			        else {
 			            Vue.set(this.inputs, i, 0)
@@ -180,7 +180,7 @@
 			    }
 			},
 			setAllInputBackground(bgcolor) {
-				for(let i = 0; i < currentContract.N_COINS; i++) {
+				for(let i = 0; i < this.contractAbis.N_COINS; i++) {
 					Vue.set(this.inputStyles, i, Object.assign(this.inputStyles[i] || {}, {backgroundColor: bgcolor}))
 				}
 			},

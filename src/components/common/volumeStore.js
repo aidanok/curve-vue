@@ -56,6 +56,20 @@ export async function getDailyVolume(pool, refresh = false) {
 	}
 }
 
+export async function getLendingAPY(pool, refresh = false) {
+	pool = pool == 'iearn' ? 'y' : pool
+	let pools = [pool]
+	console.log(pool, 'the pool')
+	let volumes = pools.map(p => fetch(`https://beta.curve.fi/raw-stats/${pool}-30m.json`))
+	volumes = await Promise.all(volumes)
+	let jsons = await Promise.all(volumes.map(v=>v.json()))
+	for(let i = 0; i < volumes.length; i++) {
+		for(let data of jsons[i]) {
+			console.log(data, "DATA")
+		}
+	}
+}
+
 export function totalVolume() {
 	return Object.values(state.volumes).filter(v=>v!=-1).length == 4 ? Object.values(state.volumes).reduce((a, b) => a + b, 0) : -1
 }

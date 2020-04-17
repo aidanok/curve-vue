@@ -301,8 +301,8 @@
                 let maxSlippage = this.maxSlippage / 100;
                 if(this.maxInputSlippage) maxSlippage = this.maxInputSlippage / 100;
                 let min_dy = BN(this.toInput).times(this.precisions(j)).times(BN(1 - maxSlippage)).toFixed(0)
-                let pool = contract.currentContract
-                let bestContract = contract;
+                let pool = 'compound'
+                let bestContract = contract.contracts[pool];
                 if(this.bestPool > 0) {
                     pool = Object.keys(contract.contracts)[this.bestPool]
                     bestContract = contract.contracts[pool]
@@ -310,9 +310,9 @@
                 let address = bestContract.swap._address;
                 if(this.distribution !== null) address = this.onesplit_address
                 if (this.inf_approval)
-                        await common.ensure_underlying_allowance(i, contract.max_allowance, this.underlying_coins, address, this.swapwrapped, bestContract)
+                        await common.ensure_underlying_allowance(i, contract.max_allowance, this.underlying_coins, address, this.swapwrapped, pool)
                     else
-                        await common.ensure_underlying_allowance(i, amount, this.underlying_coins, address, this.swapwrapped, bestContract);
+                        await common.ensure_underlying_allowance(i, amount, this.underlying_coins, address, this.swapwrapped, pool);
                 if(this.distribution !== null) {
                     await this.onesplit.methods.swap(
                             this.getCoins(i)._address,

@@ -196,6 +196,10 @@
 			        	yAxis: 1,
 			        })
 		    	}
+
+
+		    	await volumeStore.getLendingAPY(this.pool);
+
 		        this.chart.redraw();
 		        this.chart.hideLoading();
 
