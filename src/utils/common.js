@@ -156,6 +156,7 @@ export function update_rates(version = 'new', contractName) {
             )
         }
     }
+    console.log(calls, "RATES CALLS")
     return calls;
 }
 
@@ -188,6 +189,7 @@ export async function update_fee_info(version = 'new', contractName = 'compound'
                     //token_supply()
                     [swap_token_address, swap_token_stats.methods.totalSupply().encodeABI()],
                     ]
+    console.log(calls, "FEE INFO CALLS")
     let rates_calls = update_rates(version, contractName);
 
     let swap = new web3.eth.Contract(swap_abi_stats, swap_address_stats);
@@ -196,6 +198,7 @@ export async function update_fee_info(version = 'new', contractName = 'compound'
         calls.push([swap_address_stats, swap.methods.balances(i).encodeABI()])
     }
     calls.push(...rates_calls)
+    console.log(calls, "THE INCORRECT CALLS")
     if(update)
         await multiInitState(calls, contractName)
     return calls

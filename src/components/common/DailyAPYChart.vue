@@ -149,7 +149,7 @@
 				this.mounted()
 			}
 		},
-		mounted() {	
+		mounted() {
 			this.chart = this.$refs.highcharts.chart;
 	        this.chart.showLoading();
 		},

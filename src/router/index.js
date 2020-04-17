@@ -19,7 +19,7 @@ const ChartGraph = () => import('../components/graphs/Chart.vue')
 import Index from '../components/Index.vue'
 
 import init from '../init'
-import { getters, contract as currentContract , setCurrencies, changeContract} from '../contract'
+import { getters, contract as state , setCurrencies, changeContract} from '../contract'
 
 Vue.use(VueRouter)
 
@@ -135,19 +135,23 @@ router.beforeEach(async (to, from, next) => {
   if(!['compound', 'usdt', 'iearn', 'busd' , 'y'].includes(subdomain)) subdomain = 'compound'
     console.log(subdomain, "SUBDOMAIN")
 
-  if((currentContract.currentName != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
+  if((state.currentName != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
     init(subdomain)
-    currentContract.currentContract = subdomain
+    state.currentName = subdomain
+    state.currentContract = state.contracts[subdomain]
     next();
   }
   else if(!['Stats', 'FAQ', 'Donate'].includes(to.name)) {
     next();
-    if(!currentContract.contracts[subdomain].initializedContracts) {
+    console.log("HERRER")
+    if(!state.contracts[subdomain].initializedContracts) {
+      console.log("HERRERE")
       await init(subdomain);
     }
   }
   else {
-    currentContract.currentContract = subdomain;
+    state.currentName = subdomain
+    state.currentContract = state.contracts[subdomain];
     return next();
   }
 })
