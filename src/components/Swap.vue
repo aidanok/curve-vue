@@ -169,7 +169,6 @@
         },
         methods: {        
             async mounted() {
-                console.log(state.currentContract, "CUR CONT SWAP")
                 this.c_rates = state.currentContract.c_rates
                 this.coins = state.currentContract.underlying_coins
                 if(this.swapwrapped) {
@@ -215,7 +214,6 @@
                 this.promise = helpers.makeCancelable(promise)
             },
             async from_cur_handler() {
-                console.log(state.currentName, 'state contract name name')
                 if (cBN(await state.currentContract.underlying_coins[this.from_currency].methods.allowance(state.default_account, allabis[state.currentName].swap_address).call()) > state.max_allowance.div(cBN(2)))
                     this.inf_approval = true;
                 else
@@ -298,7 +296,6 @@
             async handle_trade() {
                 var i = this.from_currency
                 var j = this.to_currency;
-                console.log(state.currentContract, 'current contract')
                 var b = parseInt(await state.currentContract.swap.methods.balances(i).call()) / state.currentContract.c_rates[i];
                 let maxSlippage = this.maxSlippage / 100;
                 if(this.maxInputSlippage) maxSlippage = this.maxInputSlippage / 100;

@@ -1,7 +1,7 @@
 <template>
 	<div class = 'tradeview window white'>
  		<select-component id='select_pool'/>
- 		<highcharts :constructor-type="'stockChart'" :options="chartdata" ref='highcharts'></highcharts>
+ 		<highcharts :constructor-type="'stockChart'" :options="chartdata" ref='highchartstrade'></highcharts>
 		<depth id='depth_chart' />
 		<fieldset id='onesplit'>
 			<legend class='text-center'>Swap using all Curve pools</legend>
@@ -334,7 +334,7 @@
 			}
 		},
 		async mounted() {
-			this.chart = this.$refs.highcharts.chart;
+			this.chart = this.$refs.highchartstrade.chart;
 /*			this.$watch(()=>contract.initializedContracts, val => {
                 if(val) this.mounted();
             })*/
@@ -400,8 +400,9 @@
 				let lastPrices = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
 					//
 				let length = data[0].length;
-				for(let l = length-1; l > 0; l-= 100) {
-					for(let i = l; i > l-100; i--) {
+				let chunkSize = 70
+				for(let l = length-1; l > 0; l-= chunkSize) {
+					for(let i = l; i > l-chunkSize && i > 0; i--) {
 						ohlcData[i] = {}
 						ohlcData[i].timestamp = data[0][i].timestamp
 						ohlcData[i].prices = {}
@@ -411,7 +412,6 @@
 						for(let j = 0; j < data.length; j++) {
 							if(poolConfigs[j].N_COINS-1 < toCurrency) continue;
 							let v = data[j][i]
-							//console.log(v, poolConfigs[j], poolConfigs, i, j, fromCurrency, toCurrency, "CALC CONFIG")
 							let get_dy_underlying = await calcWorker.calcPrice(
 								{...v, ...poolConfigs[j]}, fromCurrency, toCurrency, abis[pools[j]].coin_precisions[fromCurrency])
 							let calcprice = +(BN(get_dy_underlying).div(abis[pools[j]].coin_precisions[toCurrency]))
@@ -430,7 +430,10 @@
 								ohlcData[i].prices[this.pairIdx].push(lastPrice)
 							}
 							ohlcData[i].prices[this.pairIdx].push(...v.prices[this.pairIdx])
-							ohlcData[i].volume[this.pairIdx][j] = v.volume[this.pairIdx].map((v,k)=>v / abis[pools[j]].coin_precisions[k])
+							ohlcData[i].volume[this.pairIdx][j] = v.volume[this.pairIdx].map((v,k)=>{
+								if(k == 0) return v / abis[pools[j]].coin_precisions[fromCurrency]
+								return v / abis[pools[j]].coin_precisions[k]
+							})
 						}
 					}
 
@@ -439,7 +442,7 @@
 				    let dataLength = ohlcData.length
 				        // set the allowed units for data grouping
 
-				    for (let i = l; i > l-100; i--) {
+				    for (let i = l; i > l-chunkSize && i > 0; i--) {
 				    	let len = ohlcData[i].prices[this.pairIdx].length
 	/*			    	console.log(ohlcData[i].timestamp*1000, // the date
 				            ohlcData[i].prices[this.pairIdx][0], // open
@@ -473,13 +476,14 @@
         		        this.chart.hideLoading();
 
 				    }
-				    this.$refs.highcharts.chart.series[0].setData(ohlc)
-				    this.$refs.highcharts.chart.series[1].setData(volume)
+				    if(this.$route.name != 'Trade') return;
+				    this.$refs.highchartstrade.chart.series[0].setData(ohlc)
+				    this.$refs.highchartstrade.chart.series[1].setData(volume)
 
 				}
 
 
-		        console.log(this.$refs.highcharts.chart)
+		        console.log(this.$refs.highchartstrade.chart)
 		        this.chart.setTitle({text: this.pairVal.toUpperCase()})
 /*		        this.chart.update({
 		        	rangeSelector: {

@@ -192,6 +192,7 @@
 		            }
 		        }
 		        this.chart.hideLoading();
+		        if(!this.$route.name.includes('Stats')) return;
 		        this.chart.addSeries({
 		        	name: 'Virtual growth of liquidity share',
 		        	lineWidth: 2,

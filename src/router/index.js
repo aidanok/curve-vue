@@ -20,6 +20,7 @@ import Index from '../components/Index.vue'
 
 import init from '../init'
 import { getters, contract as state , setCurrencies, changeContract} from '../contract'
+import  * as common from '@/utils/common'
 
 Vue.use(VueRouter)
 
@@ -119,6 +120,7 @@ const router = new VueRouter({
 const pools = ['compound','usdt','y','iearn','busd']
 
 router.beforeEach(async (to, from, next) => {
+  if(from.path.includes('/compound/withdraw_old')) await common.update_fee_info()
   //if(from.path.includes('profit') && to.path.includes('profit')) return window.location.href = to.path
   if(['RootIndex', 'Donate', 'StatsDaily'].includes(to.name)) return next();
   if(to.name == 'CombinedStats' || to.name == 'Trade') {
@@ -128,12 +130,10 @@ router.beforeEach(async (to, from, next) => {
   let subdomain;
   if(pools.includes(to.path.split('/')[1])) subdomain = to.path.split('/')[1]
   else subdomain = window.location.hostname.split('.')[0]
-  console.log(subdomain, "THE SUBDOMAIN")
 /*  if(window.location.hostname.split('.').length > 1) subdomain = window.location.hostname.split('.')[0]
   else subdomain = to.path.split('/')[1]*/
   if(subdomain == 'y') subdomain = 'iearn'
   if(!['compound', 'usdt', 'iearn', 'busd' , 'y'].includes(subdomain)) subdomain = 'compound'
-    console.log(subdomain, "SUBDOMAIN")
 
   if((state.currentName != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
     init(subdomain)
@@ -143,9 +143,7 @@ router.beforeEach(async (to, from, next) => {
   }
   else if(!['Stats', 'FAQ', 'Donate'].includes(to.name)) {
     next();
-    console.log("HERRER")
     if(!state.contracts[subdomain].initializedContracts) {
-      console.log("HERRERE")
       await init(subdomain);
     }
   }

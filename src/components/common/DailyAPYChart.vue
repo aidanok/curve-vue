@@ -138,8 +138,12 @@
 	                pointFormatter() {
                 		let value = Math.floor(this.y * 100) / 100 + '%';
 	                	if(this.series.name == 'Daily APY') return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${value}</b><br/>`
+	                	if(this.series.name == 'Lending APY') return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${value}</b><br/>`
 	                	if(this.series.name === 'Volume') return `<span style="color:${this.color}">●</span> ${this.series.name} : <b>${this.y.toFixed(2)}</b><br/>`
 	                }
+	            },
+	            legend: {
+	            	enabled: true
 	            },
 			},
 			chart: null,
@@ -186,6 +190,13 @@
 		        }, true)
 		        if(this.pool != 'susd') {
 			        await volumeStore.getDailyVolume(this.pool)
+
+			        let lendingrates = await volumeStore.getLendingAPY(this.pool)
+		    		this.chart.addSeries({
+		    			name: 'Lending APY',
+		    			data: lendingrates,
+		    		})
+
 			        let volumeSeries = volumeStore.state.allVolume[this.pool]
 
 			        this.chart.addSeries({
@@ -196,9 +207,6 @@
 			        	yAxis: 1,
 			        })
 		    	}
-
-
-		    	await volumeStore.getLendingAPY(this.pool);
 
 		        this.chart.redraw();
 		        this.chart.hideLoading();

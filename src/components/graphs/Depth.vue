@@ -205,7 +205,7 @@
                 this.unwatch();
             })
             this.$watch(()=>this.allInitContracts, async (val) => {
-                if(val == 4)
+                if(val >= 4)
                     await this.mountReady()
             })
 		},
@@ -253,6 +253,7 @@
 		async mounted() {
 			this.chart = this.$refs.highcharts.chart
 			this.chart.showLoading();
+			if(this.allInitContracts >= 4) this.mountReady()
 		},
 		beforeDestroy() {
 			//EventBus.$off('selected', this.selectPool)

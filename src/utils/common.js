@@ -124,7 +124,6 @@ export function update_rates(version = 'new', contractName) {
     let calls = [];
     for (let i = 0; i < allabis[contractName].N_COINS; i++) {
         let address = allabis[contractName].coins[i]
-        if(contractName == 'susd') console.log(i, address, "COINS I address")
         /*
         rate: uint256 = cERC20(self.coins[i]).exchangeRateStored()
         supply_rate: uint256 = cERC20(self.coins[i]).supplyRatePerBlock()
@@ -156,7 +155,6 @@ export function update_rates(version = 'new', contractName) {
             )
         }
     }
-    console.log(calls, "RATES CALLS")
     return calls;
 }
 
@@ -189,7 +187,6 @@ export async function update_fee_info(version = 'new', contractName = 'compound'
                     //token_supply()
                     [swap_token_address, swap_token_stats.methods.totalSupply().encodeABI()],
                     ]
-    console.log(calls, "FEE INFO CALLS")
     let rates_calls = update_rates(version, contractName);
 
     let swap = new web3.eth.Contract(swap_abi_stats, swap_address_stats);
@@ -198,9 +195,8 @@ export async function update_fee_info(version = 'new', contractName = 'compound'
         calls.push([swap_address_stats, swap.methods.balances(i).encodeABI()])
     }
     calls.push(...rates_calls)
-    console.log(calls, "THE INCORRECT CALLS")
     if(update)
-        await multiInitState(calls, contractName)
+        await multiInitState(calls, contractName, false)
     return calls
     
     console.timeEnd('updatefeeinfo')
@@ -236,6 +232,8 @@ export function decodeRates(decodedCalls, contractName, initContracts = false, b
     let contract = currentContract.contracts[contractName]
 
     let ratesDecoded = decodedCalls.slice(4+allabis[contractName].N_COINS, decodedCalls.length-allabis[contractName].N_COINS*2)
+    if(!initContracts) ratesDecoded = decodedCalls.slice(4+allabis[contractName].N_COINS)
+
 
     if(['iearn', 'busd', 'susd'].includes(contractName)) {
         ratesDecoded.map((v, i) => {
@@ -336,14 +334,12 @@ export async function multiInitState(calls, contractName, initContracts = false,
     if(!aggcalls.length)
         aggcalls = await multicall.methods.aggregate(calls).call()
     block = +aggcalls[0]
-    console.log(aggcalls, "AGG CALLS")
-    let decoded = aggcalls[1].map((hex, i) => 
-        (initContracts && contractName == 'compound' && i == 0 || i >= aggcalls[1].length-allabis[contractName].N_COINS*2) ? 
+    let decoded = aggcalls[1].map((hex, i) => {
+        return (initContracts && i >= aggcalls[1].length-allabis[contractName].N_COINS*2) ? 
             web3.eth.abi.decodeParameter('address', hex) : web3.eth.abi.decodeParameter('uint256', hex)
-    )
-    console.log(decoded, "DECODED CALLS")
+    })
     if(initContracts && contractName == 'compound') {
-        contract.oldBalance = decoded[0];
+        contract.oldBalance = +decoded[0];
         decoded = decoded.slice(1);
     }
     contract.fee = decoded[0] / 1e10;

@@ -220,11 +220,13 @@
         async created() {
             //EventBus.$on('selected', this.selectPool)
             this.$watch(()=>this.allInitContracts, async (val) => {
-                if(val == 4)
-                    await this.mounted()
+                if(val >= 4)
+                    this.mounted()
             })
         },
         mounted() {
+            if(this.allInitContracts >= 4) 
+                this.mounted()
             //this.mounted()
         },
 		methods: {
@@ -257,6 +259,7 @@
                     return this.underlying_coins[i]
             },
             precisions(i, contractName) {
+                if(!this.swapwrapped) return this.coin_precisions[i]
                 if(!contractName && this.swapwrapped == 1) contractName = 'compound'
                 if(!contractName && this.swapwrapped == 2 && i < 3) contractName = 'iearn'
                 if(!contractName && this.swapwrapped == 2 && i == 3) contractName = 'busd'

@@ -147,6 +147,7 @@ const state = Vue.observable({
 			showShares: false,
 			fee: null,
 			admin_fee: null,
+			oldBalance: 0,
 		},
 		usdt: {
 			currentName: 'usdt', 
@@ -281,7 +282,7 @@ export const getters = {
 	initializedContracts: () => state.contracts[state.currentName].initializedContracts,
 	contractAbis: () => allabis[state.currentName],
 	N_COINS: () => state.contracts[state.currentName].N_COINS,
-
+	oldBalance: () => state.contracts.compound.oldBalance,
 
 	currencies: () => {
 		return currencies[state.currentName]
@@ -299,7 +300,6 @@ export function newContract(contractName, contract, abi, address) {
 export async function init(contractName = 'compound', refresh = false, multiInitState = true) {
 	console.time('init')
 	//contract = contracts.compound for example
-	console.log(contractName)
 	let contract = state.contracts[contractName]
 	state.currentName = contractName
 	if(contract.initializedContracts && !refresh) return Promise.resolve();

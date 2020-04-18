@@ -138,7 +138,6 @@ let calc = ({
 		let dy = (xp[j].minus(y)).times(PRECISION).div(currentRates[j])
 		let _fee = BN(fee).times(dy).div(FEE_DENOMINATOR)
 		if(!usefee) _fee = ZERO
-		console.log(+dy.minus(_fee))
 		return dy.minus(_fee);
 	}
 
