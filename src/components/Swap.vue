@@ -214,7 +214,7 @@
                 this.promise = helpers.makeCancelable(promise)
             },
             async from_cur_handler() {
-                if (cBN(await state.currentContract.underlying_coins[this.from_currency].methods.allowance(state.default_account, allabis[state.currentName].swap_address).call()) > state.max_allowance.div(cBN(2)))
+                if (cBN(await state.currentContract.underlying_coins[this.from_currency].methods.allowance(state.default_account || '0x0000000000000000000000000000000000000000', allabis[state.currentName].swap_address).call()) > state.max_allowance.div(cBN(2)))
                     this.inf_approval = true;
                 else
                     this.inf_approval = false;
@@ -234,7 +234,7 @@
                 await this.set_to_amount();
             },
             async set_max_balance() {
-                let balance = await this.coins[this.from_currency].methods.balanceOf(state.default_account).call();
+                let balance = await this.coins[this.from_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[this.from_currency]
                     ) / 100
@@ -242,7 +242,7 @@
                 await this.set_to_amount();
             },
             async highlight_input() {
-                let balance = parseFloat(await this.coins[this.from_currency].methods.balanceOf(state.default_account).call()) /
+                let balance = parseFloat(await this.coins[this.from_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call()) /
                         this.precisions[this.from_currency];
                 if (this.fromInput > balance)
                     this.fromBgColor = 'red'
@@ -250,12 +250,16 @@
                     this.fromBgColor = 'blue'
             },
             async set_from_amount(i) {
-                let balance = await this.coins[i].methods.balanceOf(state.default_account).call();
+                if(!state.default_account) {
+                    this.fromInput = 0;
+                    this.maxBalance = 0;
+                    return;
+                }
+                let balance = await this.coins[i].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[i]
                     ) / 100
                 if (this.fromInput == '' || this.val == 0) {
-                    if(!state.default_account) balance = 0
                     this.fromInput = amount.toFixed(2)
                 }
                 this.maxBalance = amount.toFixed(2);
@@ -275,7 +279,7 @@
                         //dx = cBN(dx).times(currentContract.c_rates[i])
                         calls.push([state.currentContract.swap._address, state.currentContract.swap.methods.get_dy(i, j, dx).encodeABI()])
                     }
-                    calls.push([this.coins[this.to_currency]._address , this.coins[this.to_currency].methods.balanceOf(state.default_account).encodeABI()])
+                    calls.push([this.coins[this.to_currency]._address , this.coins[this.to_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()])
                     let aggcalls = await state.multicall.methods.aggregate(calls).call()
                     let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
                     let [b, get_dy_underlying, balance] = decoded
@@ -311,13 +315,13 @@
                     let exchangeMethod = state.currentContract.swap.methods.exchange_underlying
                     if(this.swapwrapped) exchangeMethod = state.currentContract.swap.methods.exchange
                     await exchangeMethod(i, j, dx, min_dy).send({
-                            from: state.default_account,
+                            from: state.default_account || '0x0000000000000000000000000000000000000000',
                             gas: this.swapwrapped ? contractGas.swap[this.currentPool].exchange : contractGas.swap[this.currentPool].exchange_underlying,
                         });
                     
                     await common.update_fee_info();
                     this.from_cur_handler();
-                    let balance = await this.coins[i].methods.balanceOf(state.default_account).call();
+                    let balance = await this.coins[i].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
                     let amount = Math.floor(
                             100 * parseFloat(balance) / this.precisions[i]
                         ) / 100

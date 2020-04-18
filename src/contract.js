@@ -132,6 +132,7 @@ const state = Vue.observable({
 	web3: null,
 	multicall: null,
 	allInitContracts: [],
+	token_balance: 0,
 	contracts: {
 		compound: {
 			currentName: 'compound', 

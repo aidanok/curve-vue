@@ -60,7 +60,7 @@ export const onboard = Onboard({
         contract.showShares = true;
       }
     },
-    address: account => {
+    address: async (account) => {
       if(contract.default_account)
         common.update_fee_info()
       contract.default_account = account;
@@ -115,13 +115,12 @@ async function init(contractName, init = true) {
   window.web3provider = web3;*/
   try {
     contract.currentName = contractName
+    window.web3 = new Web3(infura_url)
+    if(init) initContracts(contractName);
     let userSelectedWallet = await onboard.walletSelect(localStorage.getItem('selectedWallet'));
     if(userSelectedWallet) await onboard.walletCheck();
-    else window.web3 = new Web3(infura_url)
     contract.web3 = contract.web3 || window.web3
     contract.multicall = contract.multicall || new web3.eth.Contract(multicall_abi, multicall_address)
-    if(!contract.default_account) contract.default_account = (await web3.eth.getAccounts())[0];
-    if(init) await initContracts(contractName);
     console.timeEnd('initswap')
   }
   catch(err) {

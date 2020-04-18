@@ -269,7 +269,7 @@ export function decodeBalances(decodedCalls, contractName) {
     let contract = currentContract.contracts[contractName]
     var default_account = currentContract.default_account;
 
-    var token_balance = decodedCalls[2]
+    var token_balance = decodedCalls[2] || currentContract.token_balance
     var token_supply = decodedCalls[3]
 
     let balances = []
