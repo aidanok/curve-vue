@@ -20,6 +20,7 @@
     	usdt: 'Tethered',
     	iearn: 'Yield',
     	busd: 'bUSD',
+    	susd: 'sUSD-yCurve',
     }
 
 	export default {

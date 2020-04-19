@@ -58,7 +58,7 @@ let routes = [
     ]
   },
   {
-    path: '/:pool(compound|usdt|y|iearn|busd)/',
+    path: '/:pool(compound|usdt|y|iearn|busd|susd)/',
     name: 'Index',
     component: PoolApp,
     children: [
@@ -117,7 +117,7 @@ const router = new VueRouter({
   routes
 })
 
-const pools = ['compound','usdt','y','iearn','busd']
+const pools = ['compound','usdt','y','iearn','busd','susd']
 
 router.beforeEach(async (to, from, next) => {
   if(from.path.includes('/compound/withdraw_old')) await common.update_fee_info()
@@ -133,10 +133,14 @@ router.beforeEach(async (to, from, next) => {
 /*  if(window.location.hostname.split('.').length > 1) subdomain = window.location.hostname.split('.')[0]
   else subdomain = to.path.split('/')[1]*/
   if(subdomain == 'y') subdomain = 'iearn'
-  if(!['compound', 'usdt', 'iearn', 'busd' , 'y'].includes(subdomain)) subdomain = 'compound'
+  if(!pools.includes(subdomain)) subdomain = 'compound'
 
   if((state.currentName != subdomain && !['Stats', 'FAQ', 'Donate'].includes(to.name)) || ['Stats', 'FAQ', 'Donate'].includes(from.name)) {
-    init(subdomain)
+    if(subdomain == 'susd') {
+      await Promise.all([init('iearn'), [init('susd')]])
+    }
+    else
+      init(subdomain)
     state.currentName = subdomain
     state.currentContract = state.contracts[subdomain]
     next();

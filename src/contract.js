@@ -40,6 +40,10 @@ const currencies = {
 		usdt: 'yUSDT',
 		busd: 'ybUSD'
 	},
+	susd: {
+		susd: 'ySUSD',
+		ycurve: 'yCurve',
+	},
 }
 
 export const allCurrencies = currencies
@@ -48,7 +52,8 @@ export const poolMenu = {
 	compound: 'Compound',
 	usdt: 'USDT',
 	iearn: 'Y',
-	busd: 'bUSD'
+	busd: 'bUSD',
+	susd: 'sUSD-yCurve'
 }
 
 export const gas = {
@@ -69,6 +74,10 @@ export const gas = {
 			exchange: 800000,
 			exchange_underlying: 1600000
 		},
+		susd: {
+			exchange: 1600000,
+			exchange_underlying: 1600000
+		},
 	},
 	withdraw: {
 		compound: {
@@ -82,7 +91,10 @@ export const gas = {
 		},
 		busd: {
 			imbalance: x => (12642*x + 474068)*1.5,
-		}
+		},
+		susd: {
+			imbalance: x => 1000000,
+		},
 	},
 	depositzap: {
 		compound: {
@@ -109,7 +121,10 @@ export const gas = {
 			withdraw: 2000000,
 			withdrawShare: 1600000,
 			withdrawImbalance: x => (276069*x + 516861)*1.5,
-		}
+		},
+		susd: {
+			withdrawImbalance: x => (276069*x + 516861)*1.5,
+		},
 	}
 }
 
@@ -323,8 +338,7 @@ export async function init(contractName = 'compound', refresh = false, multiInit
     		[contract.old_swap_token._address, contract.old_swap_token.methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()
     	])
     }
-    if(contractName != 'susd')
-    	contract.deposit_zap = new web3.eth.Contract(allabis[contractName].deposit_abi, allabis[contractName].deposit_address)
+	contract.deposit_zap = new web3.eth.Contract(allabis[contractName].deposit_abi, allabis[contractName].deposit_address)
     contract.swap = new web3.eth.Contract(allabis[contractName].swap_abi, allabis[contractName].swap_address);
     contract.swap_token = new web3.eth.Contract(ERC20_abi, allabis[contractName].token_address);
     contract.coins = []
@@ -350,7 +364,7 @@ export async function init(contractName = 'compound', refresh = false, multiInit
     chunkArr(decoded, 2).map((v, i) => {
     	var addr = v[0];
         let coin_abi = cERC20_abi
-        if(['iearn', 'busd'].includes(contractName)) coin_abi = yERC20_abi
+        if(['iearn', 'busd', 'susd'].includes(contractName)) coin_abi = yERC20_abi
         contract.coins.push(new web3.eth.Contract(coin_abi, addr));
         var underlying_addr = v[1];
         contract.underlying_coins.push(new web3.eth.Contract(ERC20_abi, underlying_addr));

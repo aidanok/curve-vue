@@ -5873,13 +5873,413 @@ var susd = {
   N_COINS: 2, 
   tethered: [false, false],
   use_lending: [true, true],
-  coin_precisions: [1e18, 1e6],
+  coin_precisions: [1e18, 1e18],
   underlying_coins: [
     '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
     '0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8'],
   coins: [
     '0xF61718057901F84C4eEC4339EF8f0D86D2B45600',
     '0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8'],
+  deposit_address: '0xf79D9242d3B12ea1a69aeAFe4E19c8a03f324b8D',
+  deposit_abi: [
+	 {
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "address[2]",
+	    "name": "_coins"
+	   },
+	   {
+	    "type": "address[2]",
+	    "name": "_underlying_coins"
+	   },
+	   {
+	    "type": "address",
+	    "name": "_curve"
+	   },
+	   {
+	    "type": "address",
+	    "name": "_token"
+	   },
+	   {
+	    "type": "address",
+	    "name": "_yzap"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "constructor"
+	 },
+	 {
+	  "name": "add_liquidity",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "uint256[5]",
+	    "name": "uamounts"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "min_mint_amount"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 187139
+	 },
+	 {
+	  "name": "remove_liquidity",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "uint256",
+	    "name": "_amount"
+	   },
+	   {
+	    "type": "uint256[5]",
+	    "name": "min_uamounts"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 115804
+	 },
+	 {
+	  "name": "remove_liquidity_imbalance",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "uint256[5]",
+	    "name": "uamounts"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "max_burn_amount"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 145631
+	 },
+	 {
+	  "name": "calc_withdraw_one_coin",
+	  "outputs": [
+	   {
+	    "type": "uint256",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "uint256",
+	    "name": "_token_amount"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 2949022
+	 },
+	 {
+	  "name": "calc_token_amount",
+	  "outputs": [
+	   {
+	    "type": "uint256",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "uint256[5]",
+	    "name": "amounts"
+	   },
+	   {
+	    "type": "bool",
+	    "name": "deposit"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 10255
+	 },
+	 {
+	  "name": "get_dy",
+	  "outputs": [
+	   {
+	    "type": "uint256",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "j"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "dx"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 18250
+	 },
+	 {
+	  "name": "get_dy_underlying",
+	  "outputs": [
+	   {
+	    "type": "uint256",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "j"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "dx"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 18280
+	 },
+	 {
+	  "name": "exchange",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "j"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "dx"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "min_dy"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 82385
+	 },
+	 {
+	  "name": "exchange_underlying",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "j"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "dx"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "min_dy"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 81992
+	 },
+	 {
+	  "name": "remove_liquidity_one_coin",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "uint256",
+	    "name": "_token_amount"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "min_uamount"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function"
+	 },
+	 {
+	  "name": "remove_liquidity_one_coin",
+	  "outputs": [],
+	  "inputs": [
+	   {
+	    "type": "uint256",
+	    "name": "_token_amount"
+	   },
+	   {
+	    "type": "int128",
+	    "name": "i"
+	   },
+	   {
+	    "type": "uint256",
+	    "name": "min_uamount"
+	   },
+	   {
+	    "type": "bool",
+	    "name": "donate_dust"
+	   }
+	  ],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function"
+	 },
+	 {
+	  "name": "withdraw_donated_dust",
+	  "outputs": [],
+	  "inputs": [],
+	  "constant": false,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 64123
+	 },
+	 {
+	  "name": "coins",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "arg0"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1830
+	 },
+	 {
+	  "name": "underlying_coins",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [
+	   {
+	    "type": "int128",
+	    "name": "arg0"
+	   }
+	  ],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1860
+	 },
+	 {
+	  "name": "curve",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1691
+	 },
+	 {
+	  "name": "token",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1721
+	 },
+	 {
+	  "name": "ycurve",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1751
+	 },
+	 {
+	  "name": "ytoken",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1781
+	 },
+	 {
+	  "name": "yzap",
+	  "outputs": [
+	   {
+	    "type": "address",
+	    "name": ""
+	   }
+	  ],
+	  "inputs": [],
+	  "constant": true,
+	  "payable": false,
+	  "type": "function",
+	  "gas": 1811
+	 }
+	]
 
 }
 
