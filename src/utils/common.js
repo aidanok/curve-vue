@@ -82,7 +82,7 @@ export async function ensure_underlying_allowance(i, _amount, underlying_coins =
     if(wrapped) coins = contract.coins
     var default_account = currentContract.default_account
     var amount = cBN(_amount);
-    var current_allowance = cBN(await coins[i].methods.allowance(default_account, contract.swap._address).call());
+    var current_allowance = cBN(await coins[i].methods.allowance(default_account, toContract).call());
     if (current_allowance.isEqualTo(amount))
         return false;
     if ((cBN(_amount).isEqualTo(currentContract.max_allowance)) & (current_allowance.isGreaterThan(currentContract.max_allowance.div(cBN(2)))))
@@ -200,6 +200,11 @@ export async function update_fee_info(version = 'new', contractName = 'compound'
     return calls
     
     console.timeEnd('updatefeeinfo')
+}
+
+export async function update_fee_infos(contractNames, update = false) {
+    //TODO with 1 call
+    contractNames.map(name => update_fee_info('new', name))
 }
 
 function checkTethered(contractName, i) {

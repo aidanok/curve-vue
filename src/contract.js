@@ -76,7 +76,8 @@ export const gas = {
 		},
 		susd: {
 			exchange: 1600000,
-			exchange_underlying: 1600000
+			exchange_underlying: 1600000,
+			deposit_zap: 3000000,
 		},
 	},
 	withdraw: {

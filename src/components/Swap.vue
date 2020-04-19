@@ -177,8 +177,9 @@
             },
             currentContract() {
                 if(!this.isSUSD) return state.currentContract
-                if(this.from_currency == 0 && this.to_currency != 1) return state.contracts.susd
-                if(this.from_currency < 2) return state.contracts.susd
+                //sUSD->yCurve || yCurve->sUSD
+                if((this.from_currency == 0 && this.to_currency == 1) || (this.from_currency == 1 && this.to_currency == 0)) return state.contracts.susd
+                //sUSD->stablecoin
                 return state.contracts.iearn
             },
             actualFromCurrency() {
@@ -203,8 +204,23 @@
                 }
             },
             ensureAllowanceTo() {
-                if((this.from_currency == 0 && this.to_currency > 1) || (this.to_currency == 0 && this.from_currency > 1)) return 'susd'
-                return 'iearn'
+                if(!this.isSUSD) return this.currentContract.swap._address
+                if((this.from_currency == 0 && this.to_currency == 1) || (this.from_currency == 1 && this.to_currency == 0)) 
+                    return state.contracts.susd.swap._address
+                if(this.from_currency == 0 || this.to_currency == 0)
+                    return state.contracts.susd.deposit_zap._address
+                return state.contracts.iearn.swap._address;
+            },
+            contractNames() {
+                if(!this.isSUSD) return this.currentContract.currentName
+                return ['susd', 'iearn']
+            },
+            gasLimit() {
+                if(this.isSUSD && 
+                    ((this.from_currency == 0 && this.to_currency != 1) || (this.from_currency != 1 && this.to_currency == 0)))
+                    //fix for swap wrapped
+                    return contractGas.swap.susd.deposit_zap
+                return this.swapwrapped ? contractGas.swap[this.currentContract.currentName].exchange : contractGas.swap[this.currentContract.currentName].exchange_underlying
             }
         },
         mounted() {
@@ -223,7 +239,7 @@
                     this.inf_approval = false;
 
                 await this.set_from_amount(this.from_currency);
-                //await this.set_to_amount();
+                await this.set_to_amount();
             },
             async set_from_amount(i) {
                 if(!state.default_account) {
@@ -232,6 +248,7 @@
                     return;
                 }
                 let balance = await this.coins[i].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
+                console.log(balance, "THE BALANCE", this.coins[i]._address)
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[i]
                     ) / 100
@@ -273,20 +290,23 @@
             },
             setAmountPromise() {
                 let promise = new Promise(async (resolve, reject) => {
-                    var i = this.actualFromCurrency;
-                    var j = this.actualToCurrency;
+                    var i = this.from_currency;
+                    var j = this.to_currency;
+                    let actuali = this.actualFromCurrency;
+                    let actualj = this.actualToCurrency
                     var dx_ = this.fromInput;
                     var dx = cBN(Math.round(dx_ * this.precisions[this.from_currency])).toFixed(0,1);
                     let calls = [
-                        [this.currentContract.swap._address, this.currentContract.swap.methods.balances(i).encodeABI()],
+                        [this.currentContract.swap._address, this.currentContract.swap.methods.balances(actuali).encodeABI()],
                     ]
                     if(!this.swapwrapped)
                         calls.push(this.get_dy_underlying(dx))
+                    //need to fix for susd swapwrapped
                     else {
                         //dx = cBN(dx).times(currentContract.c_rates[i])
                         calls.push([this.currentContract.swap._address, this.currentContract.swap.methods.get_dy(i, j, dx).encodeABI()])
                     }
-                    calls.push([this.coins[this.actualToCurrency]._address , this.coins[this.actualToCurrency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()])
+                    calls.push([this.coins[this.to_currency]._address , this.coins[this.to_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').encodeABI()])
                     let aggcalls = await state.multicall.methods.aggregate(calls).call()
                     let decoded = aggcalls[1].map(hex => web3.eth.abi.decodeParameter('uint256', hex))
                     let [b, get_dy_underlying, balance] = decoded
@@ -318,9 +338,12 @@
             get_dy_underlying(dx) {
                 if(!this.isSUSD) 
                     return [this.currentContract.swap._address, this.currentContract.swap.methods.get_dy_underlying(this.from_currency, this.to_currency, dx).encodeABI()]
-                if(this.from_currency == 1 || this.to_currency == 1) 
-                    return [this.currentContract.swap._address, this.currentContract.swap.methods.get_dy_underlying(this.actualFromCurrency, this.actualToCurrency, dx).encodeABI()]
+                //sUSD->yCurve || yCurve->sUSD
+                if((this.from_currency == 0 && this.to_currency == 1) || (this.from_currency == 1 && this.to_currency == 0)) 
+                    return [state.contracts.susd.swap._address, state.contracts.susd.swap.methods.get_dy_underlying(this.from_currency, this.to_currency, dx).encodeABI()]
+                //sUSD -> stablecoin || stablecoin -> sUSD
                 if(this.from_currency == 0 || this.to_currency == 0) {
+                    //coins are sUSD, DAI, USDC, USDT, TUSD
                     let i = this.from_currency;
                     let j = this.to_currency;
                     if(i > 0) i = i - 1
@@ -328,6 +351,26 @@
                     return [state.contracts.susd.deposit_zap._address, state.contracts.susd.deposit_zap.methods.get_dy_underlying(i, j, dx).encodeABI()]
                 }
                 return [this.currentContract.swap._address, this.currentContract.swap.methods.get_dy_underlying(this.actualFromCurrency, this.actualToCurrency, dx).encodeABI()]
+            },
+            exchangeMethod(dx, min_dy) {
+                if(!this.isSUSD) {
+                    if(this.swapwrapped) return this.currentContract.swap.methods.exchange(this.from_currency, this.to_currency, dx, min_dy)
+                    return this.currentContract.swap.methods.exchange_underlying(this.from_currency, this.to_currency, dx, min_dy)
+                }
+                if((this.from_currency == 0 && this.to_currency == 1) || (this.from_currency == 1 && this.to_currency == 0)) 
+                    return state.contracts.susd.swap.methods.exchange_underlying(this.from_currency, this.to_currency, dx, min_dy)
+                if(this.from_currency == 0 || this.to_currency == 0) {
+                    let i = this.from_currency;
+                    let j = this.to_currency
+                    if(i > 0) i = i - 1
+                    if(j > 0) j = j - 1
+                    //for tests set min_dy to 0
+                    // console.log(min_dy, "min_dy zap")
+                    // min_dy = 0
+                    return state.contracts.susd.deposit_zap.methods.exchange_underlying(i, j, dx, min_dy)
+                }
+                return state.contracts.iearn.swap.methods.exchange_underlying(this.actualFromCurrency, this.actualToCurrency, dx, min_dy)
+
             },
             async to_cur_handler() {
                 if (this.to_currency == this.from_currency) {
@@ -341,7 +384,7 @@
                 await this.set_to_amount();
             },
             async set_max_balance() {
-                let balance = await this.coins[this.actualFromCurrency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
+                let balance = await this.coins[this.from_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
                 let amount = Math.floor(
                         100 * parseFloat(balance) / this.precisions[this.from_currency]
                     ) / 100
@@ -349,7 +392,7 @@
                 await this.set_to_amount();
             },
             async highlight_input() {
-                let balance = parseFloat(await this.coins[this.actualFromCurrency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call()) /
+                let balance = parseFloat(await this.coins[this.from_currency].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call()) /
                         this.precisions[this.from_currency];
                 if (this.fromInput > balance)
                     this.fromBgColor = 'red'
@@ -357,9 +400,11 @@
                     this.fromBgColor = 'blue'
             },
             async handle_trade() {
-                var i = this.actualFromCurrency
-                var j = this.actualToCurrency;
-                var b = parseInt(await this.currentContract.swap.methods.balances(i).call()) / this.currentContract.c_rates[i];
+                var i = this.from_currency
+                var j = this.to_currency;
+                let actuali = this.actualFromCurrency
+                let actualj = this.actualToCurrency
+                var b = parseInt(await this.currentContract.swap.methods.balances(actuali).call()) / this.currentContract.c_rates[i];
                 let maxSlippage = this.maxSlippage / 100;
                 if(this.maxInputSlippage) maxSlippage = this.maxInputSlippage / 100;
                 if (b >= 0.001) {
@@ -367,18 +412,16 @@
                     var min_dy = Math.floor(this.toInput * (1-maxSlippage) * this.precisions[j]);
                     dx = cBN(dx.toString()).toFixed(0);
                     if (this.inf_approval)
-                        await common.ensure_underlying_allowance(i, state.max_allowance, [], undefined, this.swapwrapped, this.currentContract.currentName)
+                        await common.ensure_underlying_allowance(i, state.max_allowance, this.coins, this.ensureAllowanceTo, this.swapwrapped)
                     else
-                        await common.ensure_underlying_allowance(i, dx, [], undefined, this.swapwrapped, this.currentContract.currentName);
+                        await common.ensure_underlying_allowance(i, dx, this.coins, this.ensureAllowanceTo, this.swapwrapped);
                     min_dy = cBN(min_dy.toString()).toFixed(0);
-                    let exchangeMethod = this.currentContract.swap.methods.exchange_underlying
-                    if(this.swapwrapped) exchangeMethod = this.currentContract.swap.methods.exchange
-                    await exchangeMethod(i, j, dx, min_dy).send({
+                    await this.exchangeMethod(dx, min_dy).send({
                             from: state.default_account || '0x0000000000000000000000000000000000000000',
-                            gas: this.swapwrapped ? contractGas.swap[this.currentContract.currentName].exchange : contractGas.swap[this.currentContract.currentName].exchange_underlying,
+                            gas: this.gasLimit,
                         });
                     //update both fee infos
-                    await common.update_fee_info();
+                    await common.update_fee_infos(this.contractNames);
                     this.from_cur_handler();
                     let balance = await this.coins[i].methods.balanceOf(state.default_account || '0x0000000000000000000000000000000000000000').call();
                     let amount = Math.floor(
