@@ -101,7 +101,7 @@
 				EventBus.$emit('updateCharts')
 			},
 			pushState() {
-				history.pushState({}, null, '/trade/' + this.pools.join('_') + '/' + this.pair.val.toUpperCase() + '/' + this.interval)
+				history.pushState({}, null, '#/trade/' + this.pools.join('_') + '/' + this.pair.val.toUpperCase() + '/' + this.interval)
 			},
 			isUnique(pair) {
 				let [i, j] = pair.split('-').map(p => p.toLowerCase())
